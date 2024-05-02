@@ -1,0 +1,52 @@
+name: checkout
+
+on:
+  pull_request:
+  push:
+  schedule:
+    - cron: 0 0 * * 0
+  workflow_dispatch:
+
+defaults:
+  run:
+    shell: 'bash -Eeuo pipefail -x {0}'
+
+concurrency:
+  group: ${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        runner:
+          # https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions#choosing-github-hosted-runners
+          - ubuntu-24.04
+          - ubuntu-22.04
+          - ubuntu-20.04
+          # TODO - windows-2022
+          # TODO - windows-2019
+    runs-on: ${{ matrix.runner }}
+    steps:
+      # ideally, this would just be "uses: ./checkout", but that's a chicken-and-egg that results in "Error: Can't find 'action.yml', 'action.yaml' or 'Dockerfile' under '/home/runner/work/actions/actions/checkout'. Did you forget to run actions/checkout before running your local action?"
+      # the second-best would be "uses: tianon/actions/checkout@${{ github.sha }}" but that's *also* invalid because we don't get the "github" context here so we can't self-reference properly 🙃
+      - name: checkout-checkout
+        run: |
+          mkdir -p .github/tmp
+          wget -O .github/tmp/actions.tgz "https://github.com/$GITHUB_REPOSITORY/archive/$GITHUB_SHA.tar.gz"
+          tar --extract --verbose --file .github/tmp/actions.tgz --directory .github/tmp --strip-components 1
+      - uses: ./.github/tmp/checkout
+        with:
+          fetch-depth: 3
+      - run: ls -laFh
+      - run: git log --oneline
+      - run: |
+          commits="$(git log --oneline | wc -l)"
+          if [ "$commits" -gt 3 ]; then
+            echo >&2 'error: depth is busted'
+            exit 1
+          fi
+      - run: ls -l checkout/checkout.sh .git # files we know should exist, to make sure the checkout actually worked
