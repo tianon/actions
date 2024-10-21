@@ -21,7 +21,7 @@ inputs:
     default: true
 
 runs:
-# TODO this should simply be "composite" instead, or have a separate "docker" version somehow, but that makes the post-run cleanup harder (as composite actions don't have a "post" step like Docker and Node.js actions do; https://docs.github.com/en/actions/sharing-automations/creating-actions/metadata-syntax-for-github-actions)
+# TODO this should simply be "composite" instead, or have a separate "docker" version somehow, but that makes the post-run cleanup harder (as composite actions don't have a "post" step like Docker and Node.js actions do; https://docs.github.com/en/actions/sharing-automations/creating-actions/metadata-syntax-for-github-actions; https://github.com/actions/runner/issues/1478)
   using: docker
   image: Dockerfile
   entrypoint: checkout.sh
