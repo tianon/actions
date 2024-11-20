@@ -1,0 +1,1 @@
+- privilege: automatically update PR titles to remove "chore:" (open source is not a chore)
