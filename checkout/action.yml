@@ -13,6 +13,8 @@ inputs:
   token:
     default: ${{ github.token }}
 
+  path: {}
+
   fetch-depth:
     description: 'number of commits; 0 for all'
     default: 1

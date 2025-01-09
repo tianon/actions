@@ -4,28 +4,32 @@ set -Eeuo pipefail -x
 # TODO add "debug-env" input or something?
 #env | sort
 
-uid="$(id -u)"
-if [ "$uid" = 0 ]; then
-	# must be a Docker action running in a container
-	chown="$(stat --format '%u:%g' "$PWD")"
-else
-	chown=
-fi
-
 : repository "${INPUT_REPOSITORY:=$GITHUB_REPOSITORY}"
 : ref "${FETCH_REF:=${INPUT_REF:-$GITHUB_SHA}}"
 : fetch-depth "${depth:=${INPUT_FETCH_DEPTH:-1}}"
 
 : host "${host:=${GITHUB_SERVER_URL%/}}"
 
+uid="$(id -u)"
+if [ "$uid" = 0 ]; then
+	# must be a Docker action running in a container 🙃
+	# https://docs.github.com/en/actions/sharing-automations/creating-actions/dockerfile-support-for-github-actions#user
+	chown="$(stat --format '%u:%g' "$PWD")"
+else
+	chown=
+fi
+path="$PWD${INPUT_PATH:+/${INPUT_PATH#/}}"
+
 git --version
 
 : set-safe-directory "${INPUT_SET_SAFE_DIRECTORY=true}"
 case "${INPUT_SET_SAFE_DIRECTORY,,}" in
-	true|yes|1) git config --global --add safe.directory "$PWD" ;;
+	true|yes|1) git config --global --add safe.directory "$path" ;;
 esac
 
-git init --quiet "$PWD"
+mkdir --parents --verbose "$path"
+git init --quiet "$path"
+cd "$path"
 git remote add origin "$host/${INPUT_REPOSITORY%.git}.git"
 git config --local gc.auto 0
 
@@ -57,8 +61,8 @@ git fetch "${fetchArgs[@]}" "$FETCH_REF":
 git checkout --progress --force FETCH_HEAD # TODO make a branch
 
 if [ -n "$chown" ]; then
-	echo "::group::chown $chown $PWD"
-	chown --recursive --changes "$chown" "$PWD"
+	echo "::group::chown $chown $path"
+	chown --recursive --changes "$chown" .
 	echo '::endgroup::'
 fi
 

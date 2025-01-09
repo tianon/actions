@@ -52,3 +52,17 @@ jobs:
             exit 1
           fi
       - run: ls -l checkout/checkout.sh .git # files we know should exist, to make sure the checkout actually worked
+
+      # test path:
+      - uses: ./checkout
+        with:
+          fetch-depth: 2
+          path: test/checkout/subdirectory
+      - run: ls -l test/checkout/subdirectory/checkout/checkout.sh
+      - run: touch test/checkout/subdirectory/is-it-writeable
+      - run: |
+          commits="$(git -C test/checkout/subdirectory log --oneline | wc -l)"
+          if [ "$commits" -gt 2 ]; then
+            echo >&2 'error: depth is busted'
+            exit 1
+          fi
