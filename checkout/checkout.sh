@@ -4,6 +4,14 @@ set -Eeuo pipefail -x
 # TODO add "debug-env" input or something?
 #env | sort
 
+uid="$(id -u)"
+if [ "$uid" = 0 ]; then
+	# must be a Docker action running in a container
+	chown="$(stat --format '%u:%g' "$PWD")"
+else
+	chown=
+fi
+
 : repository "${INPUT_REPOSITORY:=$GITHUB_REPOSITORY}"
 : ref "${FETCH_REF:=${INPUT_REF:-$GITHUB_SHA}}"
 : fetch-depth "${depth:=${INPUT_FETCH_DEPTH:-1}}"
@@ -47,4 +55,11 @@ fi
 git fetch "${fetchArgs[@]}" "$FETCH_REF":
 
 git checkout --progress --force FETCH_HEAD # TODO make a branch
+
+if [ -n "$chown" ]; then
+	echo "::group::chown $chown $PWD"
+	chown --recursive --changes "$chown" "$PWD"
+	echo '::endgroup::'
+fi
+
 git log -1
