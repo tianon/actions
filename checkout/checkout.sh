@@ -27,9 +27,20 @@ case "${INPUT_SET_SAFE_DIRECTORY,,}" in
 	true|yes|1) git config --global --add safe.directory "$path" ;;
 esac
 
+: clean "${INPUT_CLEAN=true}"
+case "${INPUT_CLEAN,,}" in
+	true|yes|1)
+		# https://github.com/actions/checkout/blob/cbb722410c2e876e24abbe8de2cc27693e501dcb/src/git-directory-helper.ts#L90-L124
+		if [ -e "$path" ] && { ! git -C "$path" clean -ffdx || ! git -C "$path" reset --hard HEAD; }; then
+			find "$path" -mindepth 1 -delete
+		fi
+		;;
+esac
+
 mkdir --parents --verbose "$path"
 git init --quiet "$path"
 cd "$path"
+git remote remove origin || :
 git remote add origin "$host/${INPUT_REPOSITORY%.git}.git"
 git config --local gc.auto 0
 

@@ -15,6 +15,9 @@ inputs:
 
   path: {}
 
+  clean:
+    default: true
+
   fetch-depth:
     description: 'number of commits; 0 for all'
     default: 1

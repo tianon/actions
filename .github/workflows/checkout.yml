@@ -42,6 +42,9 @@ jobs:
       - uses: ./.github/tmp/checkout
         with:
           fetch-depth: 3
+          # "Error: Can't find 'action.yml', 'action.yaml' or 'Dockerfile' under '/home/runner/work/tianon-actions/tianon-actions/.github/tmp/checkout'. Did you forget to run actions/checkout before running your local action?" 😂
+          clean: false
+          # (if we let this "checkout" run the "clean" bits, it deletes our original checkout and thus the post-run step fails 🤦)
       - run: ls -laFh
       - run: git log --oneline
       - run: touch is-it-writeable checkout/is-it-writeable
@@ -64,5 +67,15 @@ jobs:
           commits="$(git -C test/checkout/subdirectory log --oneline | wc -l)"
           if [ "$commits" -gt 2 ]; then
             echo >&2 'error: depth is busted'
+            exit 1
+          fi
+      # test clean:
+      - uses: ./checkout
+        with:
+          fetch-depth: 1
+          path: test/checkout/subdirectory
+      - run: |
+          if [ -e test/checkout/subdirectory/is-it-writeable ]; then
+            echo >&2 'error: clean is busted'
             exit 1
           fi
