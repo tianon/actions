@@ -26,7 +26,6 @@ jobs:
           # https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions#choosing-github-hosted-runners
           - ubuntu-24.04
           - ubuntu-22.04
-          - ubuntu-20.04
           # TODO - windows-2025
           # TODO - windows-2022
           # TODO - windows-2019
