@@ -4,6 +4,13 @@ set -Eeuo pipefail -x
 # TODO add "debug-env" input or something?
 #env | sort
 
+uid="$(id -u)"
+if [ "$uid" = 0 ] && command -v gosu > /dev/null; then
+	owner="$(stat --format '%u:%g' "$PWD")"
+	exec gosu "$owner" "$BASH_SOURCE" "$@"
+	# TODO delete this whole block when we're composite
+fi
+
 path="$PWD${INPUT_PATH:+/${INPUT_PATH#/}}"
 if [ ! -e "$path" ]; then
 	# if our target path doesn't exist, there's nothing to clean
@@ -14,7 +21,8 @@ cd "$path"
 # Remove credentials config file and the includeIf entries referencing it.
 # With persist-credentials: false, checkout.sh already removed them; rm --force is a no-op.
 # https://github.com/actions/checkout/blob/44c2b7a8a4ea60a981eaca3cf939b5f4305c123b/src/git-auth-helper.ts#L232-L244
-gitDir="$(git rev-parse --absolute-git-dir)"
+gitDir="$(git rev-parse --absolute-git-dir 2>/dev/null)" || exit 0
+gitDir="$(readlink --canonicalize "$gitDir")"
 credsConfig="$(git config --local --get "includeIf.gitdir:${gitDir}.path" 2>/dev/null || :)"
 if [ -n "$credsConfig" ]; then
 	rm --force --verbose "$credsConfig"

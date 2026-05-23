@@ -17,6 +17,11 @@ if [ "$uid" = 0 ]; then
 	# must be a Docker action running in a container 🙃
 	# https://docs.github.com/en/actions/sharing-automations/creating-actions/dockerfile-support-for-github-actions#user
 	chown="$(stat --format '%u:%g' "$PWD")"
+	if command -v gosu > /dev/null; then
+		# if we have "gosu" installed, let's side-step the problem entirely by swapping to the user we *should* be running as
+		exec gosu "$chown" "$BASH_SOURCE" "$@"
+	fi
+	# TODO delete this whole block and all downstream effects of it when we're composite
 else
 	chown=
 fi
@@ -40,7 +45,13 @@ git --version
 
 : set-safe-directory "${INPUT_SET_SAFE_DIRECTORY=true}"
 case "${INPUT_SET_SAFE_DIRECTORY,,}" in
-	true|yes|1) git config --global --add safe.directory "$path" ;;
+	true|yes|1)
+		# Only needed when running as root with a differently-owned workspace; after a
+		# gosu re-exec we already own the workspace so git's ownership check doesn't fire
+		if [ "$uid" = 0 ]; then
+			git config --global --add safe.directory "$path"
+		fi
+		;;
 esac
 
 : clean "${INPUT_CLEAN=true}"
@@ -65,6 +76,7 @@ git config --local gc.auto 0
 # https://github.com/actions/checkout/blob/44c2b7a8a4ea60a981eaca3cf939b5f4305c123b/src/git-auth-helper.ts#L326-L409
 credsConfig="$(mktemp "${RUNNER_TEMP}/git-credentials-XXXXXXXXXX.config")"
 if [ -n "$chown" ]; then
+	# TODO delete this (and gosu bits above) when we're composite
 	chown "$chown" "$credsConfig"
 fi
 set +x
@@ -73,6 +85,7 @@ printf '[http "%s/"]\n\textraheader = AUTHORIZATION: basic %s\n' "$host" "$b64to
 unset b64token
 set -x
 gitDir="$(git rev-parse --absolute-git-dir)"
+gitDir="$(readlink --canonicalize "$gitDir")"
 git config --local "includeIf.gitdir:${gitDir}.path" "$credsConfig"
 git config --local "includeIf.gitdir:${gitDir}/worktrees/*.path" "$credsConfig"
 # Best-effort host-side entries so that regular (non-container) job steps also get
@@ -188,6 +201,7 @@ esac
 
 if [ -n "$chown" ]; then
 	echo "::group::chown $chown $path"
+	# TODO delete this (and gosu bits above) when we're composite
 	chown --recursive --changes "$chown" .
 	echo '::endgroup::'
 fi
