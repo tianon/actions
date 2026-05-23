@@ -8,7 +8,9 @@ set -Eeuo pipefail -x
 : ref "${FETCH_REF:=${INPUT_REF:-$GITHUB_SHA}}"
 : fetch-depth "${depth:=${INPUT_FETCH_DEPTH:-1}}"
 
-: host "${host:=${GITHUB_SERVER_URL%/}}"
+host="${INPUT_GITHUB_SERVER_URL:-${GITHUB_SERVER_URL}}"
+host="${host%/}"
+: host "$host"
 
 uid="$(id -u)"
 if [ "$uid" = 0 ]; then
@@ -19,6 +21,20 @@ else
 	chown=
 fi
 path="$PWD${INPUT_PATH:+/${INPUT_PATH#/}}"
+
+# Stubs — error immediately if unsupported inputs are specified
+if [ -n "${INPUT_SSH_KEY:-}" ]; then
+	echo '::error::ssh-key is not yet supported'
+	exit 1
+fi
+case "${INPUT_LFS:-}" in
+	''|false|no|0) : ;;
+	*) echo '::error::lfs is not yet supported'; exit 1 ;;
+esac
+case "${INPUT_SUBMODULES:-}" in
+	''|false|no|0) : ;;
+	*) echo '::error::submodules is not yet supported'; exit 1 ;;
+esac
 
 git --version
 
@@ -44,32 +60,131 @@ git remote remove origin || :
 git remote add origin "$host/${INPUT_REPOSITORY%.git}.git"
 git config --local gc.auto 0
 
-set +x # TODO
-: "${INPUT_TOKEN:=$ACTIONS_RUNTIME_TOKEN}"
-b64token="$(tr -d '\n' <<<"x-access-token:$INPUT_TOKEN" | base64 -w0)"
-git config --local "http.$host/.extraheader" "Authorization: Basic $b64token"
-set -x # TODO
+# Write credentials to a file in RUNNER_TEMP; reference it via includeIf.gitdir: so the
+# token never appears as a git config value or process argument.
+# https://github.com/actions/checkout/blob/44c2b7a8a4ea60a981eaca3cf939b5f4305c123b/src/git-auth-helper.ts#L326-L409
+credsConfig="$(mktemp "${RUNNER_TEMP}/git-credentials-XXXXXXXXXX.config")"
+if [ -n "$chown" ]; then
+	chown "$chown" "$credsConfig"
+fi
+set +x
+b64token="$(tr -d '\n' <<<"x-access-token:$INPUT_TOKEN" | base64 --wrap=0)"
+printf '[http "%s/"]\n\textraheader = AUTHORIZATION: basic %s\n' "$host" "$b64token" > "$credsConfig"
+unset b64token
+set -x
+gitDir="$(git rev-parse --absolute-git-dir)"
+git config --local "includeIf.gitdir:${gitDir}.path" "$credsConfig"
+git config --local "includeIf.gitdir:${gitDir}/worktrees/*.path" "$credsConfig"
+# Best-effort host-side entries so that regular (non-container) job steps also get
+# credentials when persist-credentials: true.  We can't know the real host paths from
+# inside the container, so we assume the standard GitHub-hosted runner layout:
+#   RUNNER_TEMP  → /home/runner/work/_temp
+#   workspace    → /home/runner/work/REPONAME/REPONAME
+# Fails silently (no credentials for host git commands) when the assumption is wrong —
+# e.g. self-hosted runners or Forgejo.  Correct fix: become a composite action running
+# on the host, which knows the real paths natively (see CLAUDE.md).
+# TODO https://github.com/actions/runner/issues/1478
+repoName="${INPUT_REPOSITORY##*/}"
+hostGitDir="/home/runner/work/${repoName}/${repoName}${INPUT_PATH:+/${INPUT_PATH#/}}/.git"
+hostCredsConfig="/home/runner/work/_temp/${credsConfig##*/}"
+git config --local "includeIf.gitdir:${hostGitDir}.path" "$hostCredsConfig"
+git config --local "includeIf.gitdir:${hostGitDir}/worktrees/*.path" "$hostCredsConfig"
 
-# TODO (local) branch
 fetchArgs=(
 	--prune
-	--progress
-	--no-tags # TODO optional tags
+	--no-tags
 	--no-recurse-submodules # TODO optional submodules
 	origin
 )
+
+: show-progress "${INPUT_SHOW_PROGRESS=true}"
+case "${INPUT_SHOW_PROGRESS,,}" in
+	true|yes|1) fetchArgs+=( --progress ) ;;
+	*) fetchArgs+=( --no-progress ) ;;
+esac
+
+# Filter (sparse-checkout implies blob:none unless overridden by filter:)
+# https://github.com/actions/checkout/blob/44c2b7a8a4ea60a981eaca3cf939b5f4305c123b/src/git-source-provider.ts#L163-L170
+if [ -n "${INPUT_FILTER:-}" ]; then
+	fetchArgs+=( "--filter=$INPUT_FILTER" )
+elif [ -n "${INPUT_SPARSE_CHECKOUT:-}" ]; then
+	fetchArgs+=( '--filter=blob:none' )
+fi
+
+# Build fetch refspecs based on ref type and depth
+# https://github.com/actions/checkout/blob/44c2b7a8a4ea60a981eaca3cf939b5f4305c123b/src/ref-helper.ts#L69-L148
 if [ "$depth" = '0' ]; then
-	: # TODO this is supposed to imply *all* branches and *all* tags, but for now it'll just imply no --depth
-	# https://github.com/actions/checkout/blob/44c2b7a8a4ea60a981eaca3cf939b5f4305c123b/src/ref-helper.ts#L65-L73
-	#fetchArgs+=( '+refs/heads/*:refs/remotes/origin/*' )
-	#if [[ "$FETCH_REF" == refs/pull/* ]]; then ...
+	# All history: fetch all branches and tags; add PR head explicitly if applicable
+	fetchRefspecs=( '+refs/heads/*:refs/remotes/origin/*' '+refs/tags/*:refs/tags/*' )
+	case "$FETCH_REF" in
+		refs/pull/*)
+			prBranch="${FETCH_REF#refs/}"
+			fetchRefspecs+=( "+${FETCH_REF}:refs/remotes/${prBranch}" )
+			;;
+	esac
 else
 	fetchArgs+=( "--depth=$depth" )
-	# TODO https://github.com/actions/checkout/blob/44c2b7a8a4ea60a981eaca3cf939b5f4305c123b/src/ref-helper.ts#L75-L124
+	case "$FETCH_REF" in
+		refs/heads/*)
+			branch="${FETCH_REF#refs/heads/}"
+			fetchRefspecs=( "+${FETCH_REF}:refs/remotes/origin/${branch}" )
+			;;
+		refs/tags/*)
+			fetchRefspecs=( "+${FETCH_REF}:${FETCH_REF}" )
+			;;
+		refs/pull/*)
+			prBranch="${FETCH_REF#refs/}"
+			fetchRefspecs=( "+${FETCH_REF}:refs/remotes/${prBranch}" )
+			;;
+		refs/*)
+			fetchRefspecs=( "+${FETCH_REF}:${FETCH_REF}" )
+			;;
+		*)
+			# SHA or unqualified ref — fetch into FETCH_HEAD
+			fetchRefspecs=( "${FETCH_REF}:" )
+			;;
+	esac
+	: fetch-tags "${INPUT_FETCH_TAGS=false}"
+	case "${INPUT_FETCH_TAGS,,}" in
+		true|yes|1) fetchRefspecs+=( '+refs/tags/*:refs/tags/*' ) ;;
+	esac
 fi
-git fetch "${fetchArgs[@]}" "$FETCH_REF":
+git fetch "${fetchArgs[@]}" "${fetchRefspecs[@]}"
 
-git checkout --progress --force FETCH_HEAD # TODO make a branch
+# Sparse checkout (must be configured before git checkout)
+# https://github.com/actions/checkout/blob/44c2b7a8a4ea60a981eaca3cf939b5f4305c123b/src/git-source-provider.ts#L236-L249
+if [ -n "${INPUT_SPARSE_CHECKOUT:-}" ]; then
+	: sparse-checkout-cone-mode "${INPUT_SPARSE_CHECKOUT_CONE_MODE=true}"
+	# init sets the mode; set --stdin then reads patterns from stdin.
+	# --cone/--no-cone on 'set' were only added in git 2.36; 'init' has had them since 2.25.
+	case "${INPUT_SPARSE_CHECKOUT_CONE_MODE,,}" in
+		true|yes|1) git sparse-checkout init --cone ;;
+		*) git sparse-checkout init ;;
+	esac
+	printf '%s\n' "$INPUT_SPARSE_CHECKOUT" | git sparse-checkout set --stdin
+fi
+
+# Checkout with local branch creation
+# https://github.com/actions/checkout/blob/44c2b7a8a4ea60a981eaca3cf939b5f4305c123b/src/ref-helper.ts#L13-L67
+case "$FETCH_REF" in
+	refs/heads/*)
+		branch="${FETCH_REF#refs/heads/}"
+		git checkout --progress --force -B "$branch" "refs/remotes/origin/$branch"
+		;;
+	refs/tags/*)
+		git checkout --progress --force "$FETCH_REF"
+		;;
+	refs/pull/*)
+		prBranch="${FETCH_REF#refs/}"
+		git checkout --progress --force "refs/remotes/$prBranch"
+		;;
+	refs/*)
+		git checkout --progress --force "$FETCH_REF"
+		;;
+	*)
+		git checkout --progress --force FETCH_HEAD
+		;;
+esac
 
 if [ -n "$chown" ]; then
 	echo "::group::chown $chown $path"
@@ -78,3 +193,20 @@ if [ -n "$chown" ]; then
 fi
 
 git log -1
+
+if [ -n "${GITHUB_OUTPUT:-}" ]; then
+	echo "ref=$FETCH_REF" >> "$GITHUB_OUTPUT"
+	echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+fi
+
+: persist-credentials "${INPUT_PERSIST_CREDENTIALS=true}"
+case "${INPUT_PERSIST_CREDENTIALS,,}" in
+	true|yes|1) : ;;
+	*)
+		rm --force "$credsConfig"
+		git config --local --unset "includeIf.gitdir:${gitDir}.path" || :
+		git config --local --unset "includeIf.gitdir:${gitDir}/worktrees/*.path" || :
+		git config --local --unset "includeIf.gitdir:${hostGitDir}.path" || :
+		git config --local --unset "includeIf.gitdir:${hostGitDir}/worktrees/*.path" || :
+		;;
+esac

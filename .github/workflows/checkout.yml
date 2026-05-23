@@ -29,6 +29,7 @@ jobs:
           # TODO - windows-2025
           # TODO - windows-2022
           # TODO - windows-2019
+      fail-fast: false
     runs-on: ${{ matrix.runner }}
     steps:
       # ideally, this would just be "uses: ./checkout", but that's a chicken-and-egg that results in "Error: Can't find 'action.yml', 'action.yaml' or 'Dockerfile' under '/home/runner/work/actions/actions/checkout'. Did you forget to run actions/checkout before running your local action?"
@@ -48,7 +49,7 @@ jobs:
       - run: git log --oneline
       - run: touch is-it-writeable checkout/is-it-writeable
       - run: |
-          commits="$(git log --oneline | wc -l)"
+          commits="$(git log --first-parent --oneline | wc -l)"
           if [ "$commits" -gt 3 ]; then
             echo >&2 'error: depth is busted'
             exit 1
@@ -63,7 +64,7 @@ jobs:
       - run: ls -l test/checkout/subdirectory/checkout/checkout.sh
       - run: touch test/checkout/subdirectory/is-it-writeable
       - run: |
-          commits="$(git -C test/checkout/subdirectory log --oneline | wc -l)"
+          commits="$(git -C test/checkout/subdirectory log --first-parent --oneline | wc -l)"
           if [ "$commits" -gt 2 ]; then
             echo >&2 'error: depth is busted'
             exit 1
@@ -76,5 +77,93 @@ jobs:
       - run: |
           if [ -e test/checkout/subdirectory/is-it-writeable ]; then
             echo >&2 'error: clean is busted'
+            exit 1
+          fi
+
+      # test outputs:
+      - id: co-outputs
+        uses: ./checkout
+        with:
+          path: test/checkout/outputs
+      - run: |
+          test -n '${{ steps.co-outputs.outputs.ref }}'
+          test -n '${{ steps.co-outputs.outputs.commit }}'
+          git -C test/checkout/outputs log -1 --format=%H | grep -qxF '${{ steps.co-outputs.outputs.commit }}'
+
+      # test show-progress: false
+      - uses: ./checkout
+        with:
+          path: test/checkout/no-progress
+          show-progress: false
+      - run: ls test/checkout/no-progress
+
+      # test fetch-tags: true
+      - uses: ./checkout
+        with:
+          path: test/checkout/fetch-tags
+          fetch-tags: true
+      - run: git -C test/checkout/fetch-tags tag
+
+      # test filter: blob:none
+      - uses: ./checkout
+        with:
+          path: test/checkout/filter
+          filter: blob:none
+      - run: git -C test/checkout/filter config remote.origin.partialclonefilter | grep -qxF blob:none
+
+      # test persist-credentials: false
+      - uses: ./checkout
+        with:
+          path: test/checkout/no-persist
+          persist-credentials: false
+      - run: |
+          if git -C test/checkout/no-persist config --local --get-regexp '^includeif' 2>/dev/null | grep --quiet 'git-credentials-'; then
+            echo >&2 'error: credentials were not cleaned up with persist-credentials: false'
+            exit 1
+          fi
+
+      # test ref: refs/heads/main — should create a local tracking branch
+      - uses: ./checkout
+        with:
+          path: test/checkout/branch
+          ref: refs/heads/main
+      - run: |
+          branch="$(git -C test/checkout/branch branch --show-current)"
+          test "$branch" = 'main'
+
+      # test fetch-depth: 0 — all history
+      - uses: ./checkout
+        with:
+          path: test/checkout/all-history
+          fetch-depth: 0
+      - run: |
+          count="$(git -C test/checkout/all-history log --oneline | wc -l)"
+          if [ "$count" -le 1 ]; then
+            echo >&2 "error: expected multiple commits with fetch-depth: 0, got $count"
+            exit 1
+          fi
+
+      # test sparse-checkout (cone mode, checkout/ dir only)
+      - uses: ./checkout
+        with:
+          path: test/checkout/sparse
+          sparse-checkout: checkout
+      - run: |
+          ls test/checkout/sparse/checkout/checkout.sh
+          if [ -d test/checkout/sparse/.github ]; then
+            echo >&2 'error: .github should not be present in sparse checkout'
+            exit 1
+          fi
+
+      # test stub errors — lfs: true should fail
+      - id: stub-lfs
+        uses: ./checkout
+        with:
+          path: test/checkout/stub-lfs
+          lfs: true
+        continue-on-error: true
+      - run: |
+          if [ '${{ steps.stub-lfs.outcome }}' != 'failure' ]; then
+            echo >&2 'error: expected lfs stub to fail'
             exit 1
           fi
