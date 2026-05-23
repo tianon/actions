@@ -1,4 +1,4 @@
-FROM debian:bookworm-slim
+FROM debian:trixie-slim
 
 RUN set -eux; \
 	apt-get update; \
@@ -6,7 +6,7 @@ RUN set -eux; \
 		git \
 		curl \
 	; \
-	rm -rf /var/lib/apt/lists/*
+	apt-get dist-clean
 
 WORKDIR /tmp
 

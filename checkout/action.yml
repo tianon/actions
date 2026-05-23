@@ -13,17 +13,55 @@ inputs:
   token:
     default: ${{ github.token }}
 
+  ssh-key: {}
+
+  ssh-known-hosts: {}
+
+  ssh-strict: {}
+
+  ssh-user: {}
+
+  persist-credentials:
+    default: true
+
   path: {}
 
   clean:
+    default: true
+
+  filter: {}
+
+  sparse-checkout: {}
+
+  sparse-checkout-cone-mode:
     default: true
 
   fetch-depth:
     description: 'number of commits; 0 for all'
     default: 1
 
+  fetch-tags:
+    default: false
+
+  show-progress:
+    default: true
+
+  lfs: {}
+
+  submodules: {}
+
   set-safe-directory:
     default: true
+
+  github-server-url: {}
+
+outputs:
+
+  ref:
+    description: 'The branch, tag or SHA that was checked out'
+
+  commit:
+    description: 'The commit SHA that was checked out'
 
 runs:
 # TODO this should simply be "composite" instead, or have a separate "docker" version somehow, but that makes the post-run cleanup harder (as composite actions don't have a "post" step like Docker and Node.js actions do; https://docs.github.com/en/actions/sharing-automations/creating-actions/metadata-syntax-for-github-actions; https://github.com/actions/runner/issues/1478)
@@ -34,4 +72,14 @@ runs:
   env:
     # https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#runs-for-docker-container-actions:~:text=inputs%20using%20the-,INPUT_NUM%2DOCTOCATS,-and%20INPUT_OCTOCAT%2DEYE is cursed ("INPUT_FETCH-DEPTH" can't easily be used from bash 🙃)
     INPUT_FETCH_DEPTH: '${{ inputs.fetch-depth }}'
+    INPUT_FETCH_TAGS: '${{ inputs.fetch-tags }}'
+    INPUT_SHOW_PROGRESS: '${{ inputs.show-progress }}'
+    INPUT_PERSIST_CREDENTIALS: '${{ inputs.persist-credentials }}'
     INPUT_SET_SAFE_DIRECTORY: '${{ inputs.set-safe-directory }}'
+    INPUT_GITHUB_SERVER_URL: '${{ inputs.github-server-url }}'
+    INPUT_SSH_KEY: '${{ inputs.ssh-key }}'
+    INPUT_SSH_KNOWN_HOSTS: '${{ inputs.ssh-known-hosts }}'
+    INPUT_SSH_STRICT: '${{ inputs.ssh-strict }}'
+    INPUT_SSH_USER: '${{ inputs.ssh-user }}'
+    INPUT_SPARSE_CHECKOUT: '${{ inputs.sparse-checkout }}'
+    INPUT_SPARSE_CHECKOUT_CONE_MODE: '${{ inputs.sparse-checkout-cone-mode }}'
