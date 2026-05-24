@@ -27,26 +27,6 @@ else
 fi
 path="$PWD${INPUT_PATH:+/${INPUT_PATH#/}}"
 
-# Stubs — error immediately if unsupported inputs are specified
-if [ -n "${INPUT_SSH_KEY:-}" ]; then
-	echo '::error::ssh-key is not yet supported'
-	exit 1
-fi
-case "${INPUT_LFS:-}" in
-	'' | false | no | 0) : ;;
-	*)
-		echo '::error::lfs is not yet supported'
-		exit 1
-		;;
-esac
-case "${INPUT_SUBMODULES:-}" in
-	'' | false | no | 0) : ;;
-	*)
-		echo '::error::submodules is not yet supported'
-		exit 1
-		;;
-esac
-
 git --version
 
 : set-safe-directory "${INPUT_SET_SAFE_DIRECTORY=true}"
@@ -76,6 +56,12 @@ cd "$path"
 git remote remove origin || :
 git remote add origin "$host/${INPUT_REPOSITORY%.git}.git"
 git config --local gc.auto 0
+
+# https://github.com/actions/checkout/blob/9f265659d3bb64ab1440b03b12f4d47a24320917/src/git-source-provider.ts#L152-L155
+: lfs "${INPUT_LFS=false}"
+case "$INPUT_LFS" in
+	true | yes | 1) git lfs install --local ;;
+esac
 
 # Write credentials to a file in RUNNER_TEMP; reference it via includeIf.gitdir: so the
 # token never appears as a git config value or process argument.
@@ -203,6 +189,11 @@ case "$FETCH_REF" in
 	*)
 		git checkout --progress --force FETCH_HEAD
 		;;
+esac
+
+# https://github.com/actions/checkout/blob/9f265659d3bb64ab1440b03b12f4d47a24320917/src/git-source-provider.ts#L203-L209
+case "$INPUT_LFS" in
+	true | yes | 1) git lfs pull ;;
 esac
 
 if [ -n "$chown" ]; then

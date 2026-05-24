@@ -18,11 +18,15 @@
 name: 'Checkout (composite)'
 description: 'Checkout a Git repository; composite variant of ../action.yml (no post: step)'
 inputs:
+
   repository:
     default: ${{ github.repository }}
+
   ref: {}
+
   token:
     default: ${{ github.token }}
+
   persist-credentials:
     # callers who set true should follow with checkout/cleanup -- either via if: always()
     # for end-of-job cleanup, or proactively mid-job to scope credentials to only the steps
@@ -32,30 +36,46 @@ inputs:
     # env: block to make the composite always self-cleaning at the cost of no credential
     # persistence on non-Linux runners
     default: false
+
   path: {}
+
   clean:
     default: true
+
   filter: {}
+
   sparse-checkout: {}
+
   sparse-checkout-cone-mode:
     default: true
+
   fetch-depth:
     description: 'number of commits; 0 for all'
     default: 1
+
   fetch-tags:
     default: false
+
   show-progress:
     default: true
+
+  lfs: {}
+
   set-safe-directory:
     default: true
+
   github-server-url: {}
+
 outputs:
+
   ref:
     description: 'The branch, tag or SHA that was checked out'
     value: ${{ steps.checkout.outputs.ref }}
+
   commit:
     description: 'The commit SHA that was checked out'
     value: ${{ steps.checkout.outputs.commit }}
+
 runs:
   using: composite
   steps:
@@ -74,6 +94,7 @@ runs:
         INPUT_FETCH_DEPTH: ${{ inputs.fetch-depth }}
         INPUT_FETCH_TAGS: ${{ inputs.fetch-tags }}
         INPUT_SHOW_PROGRESS: ${{ inputs.show-progress }}
+        INPUT_LFS: ${{ inputs.lfs }}
         INPUT_SET_SAFE_DIRECTORY: ${{ inputs.set-safe-directory }}
         INPUT_GITHUB_SERVER_URL: ${{ inputs.github-server-url }}
       run: '"$GITHUB_ACTION_PATH/../checkout.sh"'
