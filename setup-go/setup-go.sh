@@ -137,7 +137,9 @@ esac
 
 if [ -z "$version" ]; then
 	echo '::group::Fetching Go release list'
+	set +x
 	dist="$(curl -fsSL 'https://go.dev/dl/?mode=json&include=all')"
+	set -x
 	echo '::endgroup::'
 
 	case "$versionSpec" in
