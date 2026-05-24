@@ -2,7 +2,13 @@ name: checkout
 
 on:
   pull_request:
+    paths:
+      - checkout/**
+      - .github/workflows/checkout.yml
   push:
+    paths:
+      - checkout/**
+      - .github/workflows/checkout.yml
   schedule:
     - cron: 0 0 * * 0
   workflow_dispatch:
@@ -24,11 +30,9 @@ jobs:
       matrix:
         runner:
           # https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions#choosing-github-hosted-runners
+          # Docker actions are Linux-only; Windows/macOS coverage is in the test-composite job below
           - ubuntu-24.04
           - ubuntu-22.04
-          # TODO - windows-2025
-          # TODO - windows-2022
-          # TODO - windows-2019
       fail-fast: false
     runs-on: ${{ matrix.runner }}
     steps:
@@ -165,5 +169,92 @@ jobs:
       - run: |
           if [ '${{ steps.stub-lfs.outcome }}' != 'failure' ]; then
             echo >&2 'error: expected lfs stub to fail'
+            exit 1
+          fi
+
+  test-composite:
+    strategy:
+      matrix:
+        runner:
+          # https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions#choosing-github-hosted-runners
+          - ubuntu-24.04
+          - ubuntu-22.04
+          - macos-latest
+          - windows-2025
+          - windows-2022
+      fail-fast: false
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - name: bootstrap
+        run: |
+          mkdir -p .github/tmp
+          curl -fsSLo .github/tmp/actions.tgz "https://github.com/$GITHUB_REPOSITORY/archive/$GITHUB_SHA.tar.gz"
+          tar --extract --gzip --file .github/tmp/actions.tgz --directory .github/tmp --strip-components 1
+          rm .github/tmp/actions.tgz
+      - uses: ./.github/tmp/checkout/composite
+        with:
+          fetch-depth: 3
+          clean: false
+      - run: ls -laFh
+      - run: git log --oneline
+      - run: touch is-it-writeable checkout/is-it-writeable
+      - run: |
+          commits="$(git log --first-parent --oneline | wc -l)"
+          if [ "$commits" -gt 3 ]; then
+            echo >&2 'error: depth is busted'
+            exit 1
+          fi
+      - run: ls -l checkout/checkout.sh .git
+
+      # test path:
+      - uses: ./checkout/composite
+        with:
+          fetch-depth: 2
+          path: test/checkout/composite/subdirectory
+      - run: ls -l test/checkout/composite/subdirectory/checkout/checkout.sh
+      - run: touch test/checkout/composite/subdirectory/is-it-writeable
+      - run: |
+          commits="$(git -C test/checkout/composite/subdirectory log --first-parent --oneline | wc -l)"
+          if [ "$commits" -gt 2 ]; then
+            echo >&2 'error: depth is busted'
+            exit 1
+          fi
+
+      # test clean:
+      - uses: ./checkout/composite
+        with:
+          fetch-depth: 1
+          path: test/checkout/composite/subdirectory
+      - run: |
+          if [ -e test/checkout/composite/subdirectory/is-it-writeable ]; then
+            echo >&2 'error: clean is busted'
+            exit 1
+          fi
+
+      # test outputs:
+      - id: co-outputs
+        uses: ./checkout/composite
+        with:
+          path: test/checkout/composite/outputs
+      - run: |
+          test -n '${{ steps.co-outputs.outputs.ref }}'
+          test -n '${{ steps.co-outputs.outputs.commit }}'
+          git -C test/checkout/composite/outputs log -1 --format=%H | grep -qxF '${{ steps.co-outputs.outputs.commit }}'
+
+      # test persist-credentials: true + explicit cleanup
+      - id: co-persist
+        uses: ./checkout/composite
+        with:
+          path: test/checkout/composite/persist
+          persist-credentials: true
+      - run: |
+          git -C test/checkout/composite/persist config --local --get-regexp '^includeif' | grep -qF 'git-credentials-'
+      - uses: ./checkout/cleanup
+        if: always()
+        with:
+          path: test/checkout/composite/persist
+      - run: |
+          if git -C test/checkout/composite/persist config --local --get-regexp '^includeif' 2>/dev/null | grep --quiet 'git-credentials-'; then
+            echo >&2 'error: cleanup failed to remove credentials'
             exit 1
           fi

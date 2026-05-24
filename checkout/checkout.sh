@@ -8,7 +8,7 @@ set -Eeuo pipefail -x
 : ref "${FETCH_REF:=${INPUT_REF:-$GITHUB_SHA}}"
 : fetch-depth "${depth:=${INPUT_FETCH_DEPTH:-1}}"
 
-host="${INPUT_GITHUB_SERVER_URL:-${GITHUB_SERVER_URL}}"
+host="${INPUT_GITHUB_SERVER_URL:-$GITHUB_SERVER_URL}"
 host="${host%/}"
 : host "$host"
 
@@ -33,19 +33,25 @@ if [ -n "${INPUT_SSH_KEY:-}" ]; then
 	exit 1
 fi
 case "${INPUT_LFS:-}" in
-	''|false|no|0) : ;;
-	*) echo '::error::lfs is not yet supported'; exit 1 ;;
+	'' | false | no | 0) : ;;
+	*)
+		echo '::error::lfs is not yet supported'
+		exit 1
+		;;
 esac
 case "${INPUT_SUBMODULES:-}" in
-	''|false|no|0) : ;;
-	*) echo '::error::submodules is not yet supported'; exit 1 ;;
+	'' | false | no | 0) : ;;
+	*)
+		echo '::error::submodules is not yet supported'
+		exit 1
+		;;
 esac
 
 git --version
 
 : set-safe-directory "${INPUT_SET_SAFE_DIRECTORY=true}"
-case "${INPUT_SET_SAFE_DIRECTORY,,}" in
-	true|yes|1)
+case "$INPUT_SET_SAFE_DIRECTORY" in
+	true | yes | 1)
 		# Only needed when running as root with a differently-owned workspace; after a
 		# gosu re-exec we already own the workspace so git's ownership check doesn't fire
 		if [ "$uid" = 0 ]; then
@@ -55,8 +61,8 @@ case "${INPUT_SET_SAFE_DIRECTORY,,}" in
 esac
 
 : clean "${INPUT_CLEAN=true}"
-case "${INPUT_CLEAN,,}" in
-	true|yes|1)
+case "$INPUT_CLEAN" in
+	true | yes | 1)
 		# https://github.com/actions/checkout/blob/cbb722410c2e876e24abbe8de2cc27693e501dcb/src/git-directory-helper.ts#L90-L124
 		if [ -e "$path" ] && { ! git -C "$path" clean -ffdx || ! git -C "$path" reset --hard HEAD; }; then
 			find "$path" -mindepth 1 -delete
@@ -64,7 +70,7 @@ case "${INPUT_CLEAN,,}" in
 		;;
 esac
 
-mkdir --parents --verbose "$path"
+mkdir -p "$path" # has to stay "-p" for macOS's sake (no GNU coreutils; --verbose unavailable too)
 git init --quiet "$path"
 cd "$path"
 git remote remove origin || :
@@ -85,7 +91,7 @@ printf '[http "%s/"]\n\textraheader = AUTHORIZATION: basic %s\n' "$host" "$b64to
 unset b64token
 set -x
 gitDir="$(git rev-parse --absolute-git-dir)"
-gitDir="$(readlink --canonicalize "$gitDir")"
+gitDir="$(readlink -f "$gitDir")" # -f instead of --canonicalize for macOS's sake (no GNU coreutils)
 git config --local "includeIf.gitdir:${gitDir}.path" "$credsConfig"
 git config --local "includeIf.gitdir:${gitDir}/worktrees/*.path" "$credsConfig"
 # Best-effort host-side entries so that regular (non-container) job steps also get
@@ -111,8 +117,8 @@ fetchArgs=(
 )
 
 : show-progress "${INPUT_SHOW_PROGRESS=true}"
-case "${INPUT_SHOW_PROGRESS,,}" in
-	true|yes|1) fetchArgs+=( --progress ) ;;
+case "$INPUT_SHOW_PROGRESS" in
+	true | yes | 1) fetchArgs+=( --progress ) ;;
 	*) fetchArgs+=( --no-progress ) ;;
 esac
 
@@ -158,8 +164,8 @@ else
 			;;
 	esac
 	: fetch-tags "${INPUT_FETCH_TAGS=false}"
-	case "${INPUT_FETCH_TAGS,,}" in
-		true|yes|1) fetchRefspecs+=( '+refs/tags/*:refs/tags/*' ) ;;
+	case "$INPUT_FETCH_TAGS" in
+		true | yes | 1) fetchRefspecs+=( '+refs/tags/*:refs/tags/*' ) ;;
 	esac
 fi
 git fetch "${fetchArgs[@]}" "${fetchRefspecs[@]}"
@@ -170,8 +176,8 @@ if [ -n "${INPUT_SPARSE_CHECKOUT:-}" ]; then
 	: sparse-checkout-cone-mode "${INPUT_SPARSE_CHECKOUT_CONE_MODE=true}"
 	# init sets the mode; set --stdin then reads patterns from stdin.
 	# --cone/--no-cone on 'set' were only added in git 2.36; 'init' has had them since 2.25.
-	case "${INPUT_SPARSE_CHECKOUT_CONE_MODE,,}" in
-		true|yes|1) git sparse-checkout init --cone ;;
+	case "$INPUT_SPARSE_CHECKOUT_CONE_MODE" in
+		true | yes | 1) git sparse-checkout init --cone ;;
 		*) git sparse-checkout init ;;
 	esac
 	printf '%s\n' "$INPUT_SPARSE_CHECKOUT" | git sparse-checkout set --stdin
@@ -213,11 +219,11 @@ if [ -n "${GITHUB_OUTPUT:-}" ]; then
 	echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 fi
 
-: persist-credentials "${INPUT_PERSIST_CREDENTIALS=true}"
-case "${INPUT_PERSIST_CREDENTIALS,,}" in
-	true|yes|1) : ;;
+: persist-credentials "${INPUT_PERSIST_CREDENTIALS=false}"
+case "$INPUT_PERSIST_CREDENTIALS" in
+	true | yes | 1) : ;;
 	*)
-		rm --force "$credsConfig"
+		rm -f "$credsConfig" # macOS has no GNU coreutils
 		git config --local --unset "includeIf.gitdir:${gitDir}.path" || :
 		git config --local --unset "includeIf.gitdir:${gitDir}/worktrees/*.path" || :
 		git config --local --unset "includeIf.gitdir:${hostGitDir}.path" || :

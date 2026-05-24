@@ -22,10 +22,10 @@ cd "$path"
 # With persist-credentials: false, checkout.sh already removed them; rm --force is a no-op.
 # https://github.com/actions/checkout/blob/44c2b7a8a4ea60a981eaca3cf939b5f4305c123b/src/git-auth-helper.ts#L232-L244
 gitDir="$(git rev-parse --absolute-git-dir 2>/dev/null)" || exit 0
-gitDir="$(readlink --canonicalize "$gitDir")"
+gitDir="$(readlink -f "$gitDir")" # -f instead of --canonicalize for macOS's sake (no GNU coreutils)
 credsConfig="$(git config --local --get "includeIf.gitdir:${gitDir}.path" 2>/dev/null || :)"
 if [ -n "$credsConfig" ]; then
-	rm --force --verbose "$credsConfig"
+	rm -vf "$credsConfig" # has to stay short for macOS's sake (no GNU coreutils)
 fi
 git config --local --unset "includeIf.gitdir:${gitDir}.path" || :
 git config --local --unset "includeIf.gitdir:${gitDir}/worktrees/*.path" || :

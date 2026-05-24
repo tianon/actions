@@ -1,0 +1,79 @@
+# composite variant of ../action.yml -- mirrors all supported inputs and outputs exactly.
+# keep in sync with ../action.yml and ../cleanup/action.yml:
+#   - every input added to ../action.yml must be added here and mapped in the env: block
+#   - every output added to ../action.yml must be added here with a value: expression
+#   - all default changes in ../action.yml must be reflected here
+#
+# no post: step -- composite actions do not support post:
+# TODO https://github.com/actions/runner/issues/1478 -- once post: is supported, checkout/ will convert to composite and this sub-action will become a pure pass-through stub
+# with persist-credentials: false (the default), checkout.sh removes credentials before
+# exiting and no separate cleanup step is needed
+# callers who set persist-credentials: true must add an explicit cleanup step:
+#
+#   - uses: tianon/actions/checkout/cleanup@vN
+#     if: always()
+#     with:
+#       path: '...'   # only if path: was set on the checkout step
+
+name: 'Checkout (composite)'
+description: 'Checkout a Git repository; composite variant of ../action.yml (no post: step)'
+inputs:
+  repository:
+    default: ${{ github.repository }}
+  ref: {}
+  token:
+    default: ${{ github.token }}
+  persist-credentials:
+    # callers who set true should follow with checkout/cleanup -- either via if: always()
+    # for end-of-job cleanup, or proactively mid-job to scope credentials to only the steps
+    # that need them (checkout/cleanup is idempotent, so calling it before post: is safe and
+    # intentionally supported even in a world where composite gains post: support)
+    # TODO consider dropping this input and hardcoding INPUT_PERSIST_CREDENTIALS=false in the
+    # env: block to make the composite always self-cleaning at the cost of no credential
+    # persistence on non-Linux runners
+    default: false
+  path: {}
+  clean:
+    default: true
+  filter: {}
+  sparse-checkout: {}
+  sparse-checkout-cone-mode:
+    default: true
+  fetch-depth:
+    description: 'number of commits; 0 for all'
+    default: 1
+  fetch-tags:
+    default: false
+  show-progress:
+    default: true
+  set-safe-directory:
+    default: true
+  github-server-url: {}
+outputs:
+  ref:
+    description: 'The branch, tag or SHA that was checked out'
+    value: ${{ steps.checkout.outputs.ref }}
+  commit:
+    description: 'The commit SHA that was checked out'
+    value: ${{ steps.checkout.outputs.commit }}
+runs:
+  using: composite
+  steps:
+    - id: checkout
+      shell: bash
+      env:
+        INPUT_REPOSITORY: ${{ inputs.repository }}
+        INPUT_REF: ${{ inputs.ref }}
+        INPUT_TOKEN: ${{ inputs.token }}
+        INPUT_PERSIST_CREDENTIALS: ${{ inputs.persist-credentials }}
+        INPUT_PATH: ${{ inputs.path }}
+        INPUT_CLEAN: ${{ inputs.clean }}
+        INPUT_FILTER: ${{ inputs.filter }}
+        INPUT_SPARSE_CHECKOUT: ${{ inputs.sparse-checkout }}
+        INPUT_SPARSE_CHECKOUT_CONE_MODE: ${{ inputs.sparse-checkout-cone-mode }}
+        INPUT_FETCH_DEPTH: ${{ inputs.fetch-depth }}
+        INPUT_FETCH_TAGS: ${{ inputs.fetch-tags }}
+        INPUT_SHOW_PROGRESS: ${{ inputs.show-progress }}
+        INPUT_SET_SAFE_DIRECTORY: ${{ inputs.set-safe-directory }}
+        INPUT_GITHUB_SERVER_URL: ${{ inputs.github-server-url }}
+      run: '"$GITHUB_ACTION_PATH/../checkout.sh"'

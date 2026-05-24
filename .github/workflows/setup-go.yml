@@ -38,10 +38,9 @@ jobs:
       fail-fast: false
     runs-on: ${{ matrix.runner }}
     steps:
-      # TODO: once ./checkout is a composite action (blocked on https://github.com/actions/runner/issues/1478),
-      # replace this bootstrap with: uses: tianon/actions/checkout@HEAD
-      # ./checkout is currently a Docker action (Linux-only), so we use a tarball bootstrap
-      # with curl instead of wget for cross-platform compatibility
+      # TODO uses: tianon/actions/checkout/composite@HEAD
+      # (replace this tarball bootstrap once checkout/composite is available on HEAD;
+      # ./checkout is a Docker action (Linux-only) and cannot run on Windows/macOS)
       - name: bootstrap
         run: |
           mkdir -p .github/tmp
