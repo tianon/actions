@@ -15,16 +15,16 @@ inputs:
     default: ${{ github.token }}
 
   # TODO https://github.com/actions/checkout/blob/9f265659d3bb64ab1440b03b12f4d47a24320917/action.yml#L25-L36
-  # ssh-key: not yet supported -- SSH authentication not implemented
+  # ssh-key: not yet implemented -- Docker container model complicates key file injection; implementation also requires known_hosts management (including GitHub's implicit host fingerprint), cross-platform GIT_SSH_COMMAND construction, and strict key file permissions
 
   # TODO https://github.com/actions/checkout/blob/9f265659d3bb64ab1440b03b12f4d47a24320917/action.yml#L37-L41
-  # ssh-known-hosts: not yet supported -- part of SSH authentication, depends on ssh-key
+  # ssh-known-hosts: not yet implemented -- depends on ssh-key (also not implemented)
 
   # TODO https://github.com/actions/checkout/blob/9f265659d3bb64ab1440b03b12f4d47a24320917/action.yml#L42-L47
-  # ssh-strict: not yet supported -- part of SSH authentication, depends on ssh-key
+  # ssh-strict: not yet implemented -- depends on ssh-key (also not implemented)
 
   # TODO https://github.com/actions/checkout/blob/9f265659d3bb64ab1440b03b12f4d47a24320917/action.yml#L48-L51
-  # ssh-user: not yet supported -- part of SSH authentication, depends on ssh-key
+  # ssh-user: not yet implemented -- depends on ssh-key (also not implemented)
 
   persist-credentials:
     # upstream default: true -- credentials after checkout are rarely needed and are a security anti-pattern;
@@ -54,10 +54,10 @@ inputs:
     default: true
 
   # TODO https://github.com/actions/checkout/blob/9f265659d3bb64ab1440b03b12f4d47a24320917/action.yml#L83-L85
-  # lfs: not yet supported -- Git LFS not implemented
+  # lfs: not yet implemented -- requires git-lfs in the Docker container image; supported in checkout/composite where git-lfs is available on GitHub-hosted runners
 
   # TODO https://github.com/actions/checkout/blob/9f265659d3bb64ab1440b03b12f4d47a24320917/action.yml#L86-L94
-  # submodules: not yet supported -- submodule support not implemented
+  # submodules: not yet implemented -- requires recursive authentication and fetch configuration per submodule repo
 
   set-safe-directory:
     default: true
