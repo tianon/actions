@@ -1,4 +1,5 @@
-# inspired by: https://github.com/actions/checkout/blob/44c2b7a8a4ea60a981eaca3cf939b5f4305c123b/action.yml
+# https://github.com/actions/checkout/blob/9f265659d3bb64ab1440b03b12f4d47a24320917/action.yml
+# composite/action.yml and cleanup/action.yml must stay in sync with this file; see composite/action.yml for the full sync contract
 
 name: 'Checkout'
 description: 'Ostensibly, checkout a Git repository'
@@ -13,16 +14,22 @@ inputs:
   token:
     default: ${{ github.token }}
 
-  ssh-key: {}
+  # TODO https://github.com/actions/checkout/blob/9f265659d3bb64ab1440b03b12f4d47a24320917/action.yml#L25-L36
+  # ssh-key: not yet supported -- SSH authentication not implemented
 
-  ssh-known-hosts: {}
+  # TODO https://github.com/actions/checkout/blob/9f265659d3bb64ab1440b03b12f4d47a24320917/action.yml#L37-L41
+  # ssh-known-hosts: not yet supported -- part of SSH authentication, depends on ssh-key
 
-  ssh-strict: {}
+  # TODO https://github.com/actions/checkout/blob/9f265659d3bb64ab1440b03b12f4d47a24320917/action.yml#L42-L47
+  # ssh-strict: not yet supported -- part of SSH authentication, depends on ssh-key
 
-  ssh-user: {}
+  # TODO https://github.com/actions/checkout/blob/9f265659d3bb64ab1440b03b12f4d47a24320917/action.yml#L48-L51
+  # ssh-user: not yet supported -- part of SSH authentication, depends on ssh-key
 
   persist-credentials:
-    default: true
+    # upstream default: true -- credentials after checkout are rarely needed and are a security anti-pattern;
+    # set to true explicitly only if post-checkout git operations require authentication
+    default: false
 
   path: {}
 
@@ -46,9 +53,11 @@ inputs:
   show-progress:
     default: true
 
-  lfs: {}
+  # TODO https://github.com/actions/checkout/blob/9f265659d3bb64ab1440b03b12f4d47a24320917/action.yml#L83-L85
+  # lfs: not yet supported -- Git LFS not implemented
 
-  submodules: {}
+  # TODO https://github.com/actions/checkout/blob/9f265659d3bb64ab1440b03b12f4d47a24320917/action.yml#L86-L94
+  # submodules: not yet supported -- submodule support not implemented
 
   set-safe-directory:
     default: true
@@ -64,10 +73,14 @@ outputs:
     description: 'The commit SHA that was checked out'
 
 runs:
-# TODO this should simply be "composite" instead, or have a separate "docker" version somehow, but that makes the post-run cleanup harder (as composite actions don't have a "post" step like Docker and Node.js actions do; https://docs.github.com/en/actions/sharing-automations/creating-actions/metadata-syntax-for-github-actions; https://github.com/actions/runner/issues/1478)
+  # TODO https://github.com/actions/runner/issues/1478 -- convert to composite once post: is supported; checkout/composite will then be a pure pass-through stub
+  # docker action (Linux-only); automatic credential cleanup via post-entrypoint
+  # for non-Linux runners, use ./checkout/composite instead
   using: docker
   image: Dockerfile
   entrypoint: checkout.sh
+  # TODO ideally post-if: inputs.persist-credentials != 'false' to skip cleanup entirely when credentials were never kept, but inputs.* is not available in post-if: context
+  # https://github.com/orgs/community/discussions/65593
   post-entrypoint: cleanup.sh
   env:
     # https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#runs-for-docker-container-actions:~:text=inputs%20using%20the-,INPUT_NUM%2DOCTOCATS,-and%20INPUT_OCTOCAT%2DEYE is cursed ("INPUT_FETCH-DEPTH" can't easily be used from bash 🙃)
@@ -77,9 +90,5 @@ runs:
     INPUT_PERSIST_CREDENTIALS: '${{ inputs.persist-credentials }}'
     INPUT_SET_SAFE_DIRECTORY: '${{ inputs.set-safe-directory }}'
     INPUT_GITHUB_SERVER_URL: '${{ inputs.github-server-url }}'
-    INPUT_SSH_KEY: '${{ inputs.ssh-key }}'
-    INPUT_SSH_KNOWN_HOSTS: '${{ inputs.ssh-known-hosts }}'
-    INPUT_SSH_STRICT: '${{ inputs.ssh-strict }}'
-    INPUT_SSH_USER: '${{ inputs.ssh-user }}'
     INPUT_SPARSE_CHECKOUT: '${{ inputs.sparse-checkout }}'
     INPUT_SPARSE_CHECKOUT_CONE_MODE: '${{ inputs.sparse-checkout-cone-mode }}'
