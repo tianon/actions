@@ -71,8 +71,8 @@ inputs:
   show-progress:
     default: true
 
-  # TODO https://github.com/actions/checkout/blob/9f265659d3bb64ab1440b03b12f4d47a24320917/action.yml#L83-L85
-  # lfs: not yet implemented -- requires git-lfs in the Docker container image; supported in checkout/composite where git-lfs is available on GitHub-hosted runners
+  # intentional divergence: LFS is supported in composite: https://github.com/tianon/actions/pull/8
+  lfs: {}
 
   # TODO https://github.com/actions/checkout/blob/9f265659d3bb64ab1440b03b12f4d47a24320917/action.yml#L86-L94
   # submodules: not yet implemented -- requires recursive authentication and fetch configuration per submodule repo
@@ -104,6 +104,7 @@ runs:
         INPUT_FETCH_TAGS: ${{ inputs.fetch-tags }}
         INPUT_FILTER: ${{ inputs.filter }}
         INPUT_GITHUB_SERVER_URL: ${{ inputs.github-server-url }}
+        INPUT_LFS: ${{ inputs.lfs }}
         INPUT_PATH: ${{ inputs.path }}
         INPUT_PERSIST_CREDENTIALS: ${{ inputs.persist-credentials }}
         INPUT_REF: ${{ inputs.ref }}
