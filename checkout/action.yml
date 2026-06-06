@@ -86,9 +86,9 @@ runs:
     # https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#runs-for-docker-container-actions:~:text=inputs%20using%20the-,INPUT_NUM%2DOCTOCATS,-and%20INPUT_OCTOCAT%2DEYE is cursed ("INPUT_FETCH-DEPTH" can't easily be used from bash 🙃)
     INPUT_FETCH_DEPTH: '${{ inputs.fetch-depth }}'
     INPUT_FETCH_TAGS: '${{ inputs.fetch-tags }}'
-    INPUT_SHOW_PROGRESS: '${{ inputs.show-progress }}'
+    INPUT_GITHUB_SERVER_URL: '${{ inputs.github-server-url }}'
     INPUT_PERSIST_CREDENTIALS: '${{ inputs.persist-credentials }}'
     INPUT_SET_SAFE_DIRECTORY: '${{ inputs.set-safe-directory }}'
-    INPUT_GITHUB_SERVER_URL: '${{ inputs.github-server-url }}'
+    INPUT_SHOW_PROGRESS: '${{ inputs.show-progress }}'
     INPUT_SPARSE_CHECKOUT: '${{ inputs.sparse-checkout }}'
     INPUT_SPARSE_CHECKOUT_CONE_MODE: '${{ inputs.sparse-checkout-cone-mode }}'

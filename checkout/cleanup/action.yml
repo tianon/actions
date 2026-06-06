@@ -10,7 +10,9 @@
 name: 'Checkout Cleanup'
 description: 'Remove credentials persisted by checkout/composite; only needed when persist-credentials: true'
 inputs:
+
   path: {}
+
 runs:
   using: composite
   steps:
