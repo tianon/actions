@@ -126,6 +126,11 @@ if [ "$depth" = '0' ]; then
 			prBranch="${FETCH_REF#refs/}"
 			fetchRefspecs+=( "+${FETCH_REF}:refs/remotes/${prBranch}" )
 			;;
+		refs/*) ;;
+		*)
+			# SHA: fetch explicitly in case it's not reachable from any branch or tag
+			fetchRefspecs+=( "${FETCH_REF}:" )
+			;;
 	esac
 else
 	fetchArgs+=( "--depth=$depth" )
@@ -145,7 +150,7 @@ else
 			fetchRefspecs=( "+${FETCH_REF}:${FETCH_REF}" )
 			;;
 		*)
-			# SHA or unqualified ref — fetch into FETCH_HEAD
+			# SHA or unqualified ref — no local ref name; object lands in object store via FETCH_HEAD
 			fetchRefspecs=( "${FETCH_REF}:" )
 			;;
 	esac
@@ -187,7 +192,7 @@ case "$FETCH_REF" in
 		git checkout --progress --force "$FETCH_REF"
 		;;
 	*)
-		git checkout --progress --force FETCH_HEAD
+		git checkout --progress --force "$FETCH_REF"
 		;;
 esac
 
