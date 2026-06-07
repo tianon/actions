@@ -147,6 +147,18 @@ jobs:
             exit 1
           fi
 
+      # test fetch-depth: 0 with default ref (a SHA) — verifies correct commit is checked out when FETCH_REF is a SHA
+      - uses: ./checkout
+        with:
+          path: test/checkout/sha-depth0
+          fetch-depth: 0
+      - run: |
+          got="$(git -C test/checkout/sha-depth0 rev-parse HEAD)"
+          if [ "$got" != "$GITHUB_SHA" ]; then
+            echo >&2 "error: expected HEAD=$GITHUB_SHA, got $got"
+            exit 1
+          fi
+
       # test sparse-checkout (cone mode, checkout/ dir only)
       - uses: ./checkout
         with:
@@ -240,6 +252,18 @@ jobs:
           test -n '${{ steps.co-outputs.outputs.ref }}'
           test -n '${{ steps.co-outputs.outputs.commit }}'
           git -C test/checkout/composite/outputs log -1 --format=%H | grep -qxF '${{ steps.co-outputs.outputs.commit }}'
+
+      # test fetch-depth: 0 with default ref (a SHA) — verifies correct commit is checked out when FETCH_REF is a SHA
+      - uses: ./checkout/composite
+        with:
+          path: test/checkout/composite/sha-depth0
+          fetch-depth: 0
+      - run: |
+          got="$(git -C test/checkout/composite/sha-depth0 rev-parse HEAD)"
+          if [ "$got" != "$GITHUB_SHA" ]; then
+            echo >&2 "error: expected HEAD=$GITHUB_SHA, got $got"
+            exit 1
+          fi
 
       # test persist-credentials: true + explicit cleanup
       - id: co-persist
