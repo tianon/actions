@@ -40,13 +40,8 @@ inputs:
   # ssh-user: not yet implemented -- depends on ssh-key (also not implemented)
 
   persist-credentials:
-    # callers who set true should follow with checkout/cleanup -- either via if: always()
-    # for end-of-job cleanup, or proactively mid-job to scope credentials to only the steps
-    # that need them (checkout/cleanup is idempotent, so calling it before post: is safe and
-    # intentionally supported even in a world where composite gains post: support)
-    # TODO consider dropping this input and hardcoding INPUT_PERSIST_CREDENTIALS=false in the
-    # env: block to make the composite always self-cleaning at the cost of no credential
-    # persistence on non-Linux runners
+    # callers who set true should follow with checkout/cleanup -- either via if: always() for end-of-job cleanup, or proactively mid-job to scope credentials to only the steps that need them (checkout/cleanup is idempotent, so calling it before post: is safe and intentionally supported even in a world where composite gains post: support)
+    # TODO consider dropping this input and hardcoding INPUT_PERSIST_CREDENTIALS=false in the env: block to make the composite always self-cleaning at the cost of no credential persistence on non-Linux runners
     default: false
 
   path: {}

@@ -12,16 +12,16 @@ inputs:
     description: 'Path to go.mod, go.work, .tool-versions, or .go-version'
 
   architecture:
-    description: 'Target architecture (e.g. amd64, arm64, x64). Defaults to the runner architecture.'
+    description: 'Target architecture (eg, amd64, arm64, x64). Defaults to the runner architecture.'
 
   # TODO https://github.com/actions/setup-go/blob/78961f6f84d799cd858575bb931c3e51d3b13290/action.yml#L9-L11
   # check-latest: not supported
 
   # TODO https://github.com/actions/setup-go/blob/78961f6f84d799cd858575bb931c3e51d3b13290/action.yml#L12-L14
-  # token: not needed — we fetch directly from go.dev, not the GitHub-hosted manifest
+  # token: not needed -- we fetch directly from go.dev, not the GitHub-hosted manifest
 
   # TODO https://github.com/actions/setup-go/blob/78961f6f84d799cd858575bb931c3e51d3b13290/action.yml#L15-L19
-  # cache / cache-dependency-path: not supported — use actions/cache explicitly
+  # cache / cache-dependency-path: not supported -- use actions/cache explicitly
 
   # TODO https://github.com/actions/setup-go/blob/78961f6f84d799cd858575bb931c3e51d3b13290/action.yml#L22-L23
   # go-download-base-url: not supported

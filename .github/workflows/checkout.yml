@@ -126,7 +126,7 @@ jobs:
             exit 1
           fi
 
-      # test ref: refs/heads/main — should create a local tracking branch
+      # test ref: refs/heads/main -- should create a local tracking branch
       - uses: ./checkout
         with:
           path: test/checkout/branch
@@ -135,7 +135,7 @@ jobs:
           branch="$(git -C test/checkout/branch branch --show-current)"
           test "$branch" = 'main'
 
-      # test fetch-depth: 0 — all history
+      # test fetch-depth: 0 -- all history
       - uses: ./checkout
         with:
           path: test/checkout/all-history
@@ -147,7 +147,7 @@ jobs:
             exit 1
           fi
 
-      # test fetch-depth: 0 with default ref (a SHA) — verifies correct commit is checked out when FETCH_REF is a SHA
+      # test fetch-depth: 0 with default ref (a SHA) -- verifies correct commit is checked out when FETCH_REF is a SHA
       - uses: ./checkout
         with:
           path: test/checkout/sha-depth0
@@ -171,7 +171,7 @@ jobs:
             exit 1
           fi
 
-      # test stub errors — lfs: true should fail
+      # test stub errors -- lfs: true should fail
       - id: stub-lfs
         uses: ./checkout
         with:
@@ -253,7 +253,7 @@ jobs:
           test -n '${{ steps.co-outputs.outputs.commit }}'
           git -C test/checkout/composite/outputs log -1 --format=%H | grep -qxF '${{ steps.co-outputs.outputs.commit }}'
 
-      # test fetch-depth: 0 with default ref (a SHA) — verifies correct commit is checked out when FETCH_REF is a SHA
+      # test fetch-depth: 0 with default ref (a SHA) -- verifies correct commit is checked out when FETCH_REF is a SHA
       - uses: ./checkout/composite
         with:
           path: test/checkout/composite/sha-depth0

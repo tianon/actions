@@ -73,8 +73,7 @@ fi
 versionSpec="${versionSpec#go}"
 : versionSpec "$versionSpec"
 
-# OS detection — $RUNNER_OS is set by the GitHub Actions runner; fall back to uname -s
-# for self-hosted runners that may not set it
+# OS detection -- $RUNNER_OS is set by the GitHub Actions runner; fall back to uname -s for self-hosted runners that may not set it
 os="$(uname -s)"
 os="${RUNNER_OS:=$os}"
 case "$os" in
@@ -89,7 +88,7 @@ esac
 export os
 : os "$os"
 
-# Prefer dpkg/apk (userspace arch) over uname -m (kernel arch); see:
+# prefer dpkg/apk (userspace arch) over uname -m (kernel arch)
 # https://github.com/docker-library/bashbrew/blob/6c47dbbb89c2665758a08e580424c128f5f423da/scripts/bashbrew-host-arch.sh
 arch=
 if [ -n "${INPUT_ARCHITECTURE:-}" ]; then
@@ -215,7 +214,7 @@ if [ -z "$version" ]; then
 			')"
 			;;
 		*)
-			echo "::error::unsupported version spec '${versionSpec}' (expected: stable, oldstable, 1.21, 1.21.0, etc.)"
+			echo "::error::unsupported version spec '${versionSpec}' (expected: stable, oldstable, 1.21, 1.21.0, etc)"
 			exit 1
 			;;
 	esac
@@ -264,7 +263,7 @@ fi
 
 echo "${toolDir}/bin" >> "$GITHUB_PATH"
 echo "${GOPATH:-$HOME/go}/bin" >> "$GITHUB_PATH"
-# https://go.dev/doc/toolchain — prevent Go 1.21+ from auto-downloading a different toolchain
+# https://go.dev/doc/toolchain -- prevent Go 1.21+ from auto-downloading a different toolchain
 echo 'GOTOOLCHAIN=local' >> "$GITHUB_ENV"
 
 if [ -n "${GITHUB_OUTPUT:-}" ]; then
