@@ -1,9 +1,7 @@
 # explicit credential cleanup -- usable in two ways:
 #   1. end-of-job cleanup (if: always()) for callers who set persist-credentials: true
-#   2. proactive mid-job cleanup to scope credentials to only the steps that need them,
-#      then revoke them before continuing -- idempotent, so safe to call before post: too
-# the Docker action (../action.yml) handles end-of-job cleanup automatically via
-# post-entrypoint: but checkout/cleanup is still useful for the proactive mid-job case
+#   2. proactive mid-job cleanup to scope credentials to only the steps that need them, then revoke them before continuing -- idempotent, so safe to call before post: too
+# the Docker action (../action.yml) handles end-of-job cleanup automatically via post-entrypoint: but checkout/cleanup is still useful for the proactive mid-job case
 #
 # keep in sync with ../action.yml and ../composite/action.yml
 

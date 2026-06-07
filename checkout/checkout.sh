@@ -32,8 +32,7 @@ git --version
 : set-safe-directory "${INPUT_SET_SAFE_DIRECTORY=true}"
 case "$INPUT_SET_SAFE_DIRECTORY" in
 	true | yes | 1)
-		# Only needed when running as root with a differently-owned workspace; after a
-		# gosu re-exec we already own the workspace so git's ownership check doesn't fire
+		# only needed when running as root with a differently-owned workspace; after a gosu re-exec we already own the workspace so git's ownership check doesn't fire
 		if [ "$uid" = 0 ]; then
 			git config --global --add safe.directory "$path"
 		fi
@@ -63,8 +62,7 @@ case "$INPUT_LFS" in
 	true | yes | 1) git lfs install --local ;;
 esac
 
-# Write credentials to a file in RUNNER_TEMP; reference it via includeIf.gitdir: so the
-# token never appears as a git config value or process argument.
+# write credentials to a file in RUNNER_TEMP; reference it via includeIf.gitdir: so the token never appears as a git config value or process argument
 # https://github.com/actions/checkout/blob/44c2b7a8a4ea60a981eaca3cf939b5f4305c123b/src/git-auth-helper.ts#L326-L409
 credsConfig="$(mktemp "${RUNNER_TEMP}/git-credentials-XXXXXXXXXX.config")"
 if [ -n "$chown" ]; then
@@ -80,14 +78,12 @@ gitDir="$(git rev-parse --absolute-git-dir)"
 gitDir="$(readlink -f "$gitDir")" # -f instead of --canonicalize for macOS's sake (no GNU coreutils)
 git config --local "includeIf.gitdir:${gitDir}.path" "$credsConfig"
 git config --local "includeIf.gitdir:${gitDir}/worktrees/*.path" "$credsConfig"
-# Best-effort host-side entries so that regular (non-container) job steps also get
-# credentials when persist-credentials: true.  We can't know the real host paths from
-# inside the container, so we assume the standard GitHub-hosted runner layout:
-#   RUNNER_TEMP  → /home/runner/work/_temp
-#   workspace    → /home/runner/work/REPONAME/REPONAME
-# Fails silently (no credentials for host git commands) when the assumption is wrong —
-# e.g. self-hosted runners or Forgejo.  Correct fix: become a composite action running
-# on the host, which knows the real paths natively (see CLAUDE.md).
+# best-effort host-side entries so that regular (non-container) job steps also get credentials when persist-credentials: true
+# we can't know the real host paths from inside the container, so we assume the standard GitHub-hosted runner layout:
+#   RUNNER_TEMP  -> /home/runner/work/_temp
+#   workspace    -> /home/runner/work/REPONAME/REPONAME
+# fails silently (no credentials for host git commands) when the assumption is wrong -- eg, self-hosted runners or Forgejo
+# correct fix: become a composite action running on the host, which knows the real paths natively (see CLAUDE.md)
 # TODO https://github.com/actions/runner/issues/1478
 repoName="${INPUT_REPOSITORY##*/}"
 hostGitDir="/home/runner/work/${repoName}/${repoName}${INPUT_PATH:+/${INPUT_PATH#/}}/.git"
@@ -150,7 +146,7 @@ else
 			fetchRefspecs=( "+${FETCH_REF}:${FETCH_REF}" )
 			;;
 		*)
-			# SHA or unqualified ref — no local ref name; object lands in object store via FETCH_HEAD
+			# SHA or unqualified ref -- no local ref name; object lands in object store via FETCH_HEAD
 			fetchRefspecs=( "${FETCH_REF}:" )
 			;;
 	esac
@@ -165,8 +161,8 @@ git fetch "${fetchArgs[@]}" "${fetchRefspecs[@]}"
 # https://github.com/actions/checkout/blob/44c2b7a8a4ea60a981eaca3cf939b5f4305c123b/src/git-source-provider.ts#L236-L249
 if [ -n "${INPUT_SPARSE_CHECKOUT:-}" ]; then
 	: sparse-checkout-cone-mode "${INPUT_SPARSE_CHECKOUT_CONE_MODE=true}"
-	# init sets the mode; set --stdin then reads patterns from stdin.
-	# --cone/--no-cone on 'set' were only added in git 2.36; 'init' has had them since 2.25.
+	# init sets the mode; set --stdin then reads patterns from stdin
+	# --cone/--no-cone on 'set' were only added in git 2.36; 'init' has had them since 2.25
 	case "$INPUT_SPARSE_CHECKOUT_CONE_MODE" in
 		true | yes | 1) git sparse-checkout init --cone ;;
 		*) git sparse-checkout init ;;

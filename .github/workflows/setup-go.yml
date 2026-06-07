@@ -70,13 +70,13 @@ jobs:
           go version | grep -qF 'go1.21.0'
           test "$GO_VERSION" = '1.21.0'
 
-      # test cache hit (same exact version — should skip API call and download)
+      # test cache hit (same exact version -- should skip API call and download)
       - uses: ./setup-go
         with:
           go-version: 1.21.0
       - run: go version | grep -qF 'go1.21.0'
 
-      # test architecture override — 386 on Linux (32-bit x86 runs natively on x86_64 Linux)
+      # test architecture override -- 386 on Linux (32-bit x86 runs natively on x86_64 Linux)
       - if: runner.os == 'Linux'
         uses: ./setup-go
         with:

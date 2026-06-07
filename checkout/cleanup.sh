@@ -18,8 +18,8 @@ if [ ! -e "$path" ]; then
 fi
 cd "$path"
 
-# Remove credentials config file and the includeIf entries referencing it.
-# With persist-credentials: false, checkout.sh already removed them; rm --force is a no-op.
+# remove credentials config file and the includeIf entries referencing it
+# with persist-credentials: false, checkout.sh already removed them; rm --force is a no-op
 # https://github.com/actions/checkout/blob/44c2b7a8a4ea60a981eaca3cf939b5f4305c123b/src/git-auth-helper.ts#L232-L244
 gitDir="$(git rev-parse --absolute-git-dir 2>/dev/null)" || exit 0
 gitDir="$(readlink -f "$gitDir")" # -f instead of --canonicalize for macOS's sake (no GNU coreutils)
