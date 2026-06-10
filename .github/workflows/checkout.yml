@@ -41,7 +41,7 @@ jobs:
       - name: bootstrap
         run: |
           mkdir -p .github/tmp
-          wget -O .github/tmp/actions.tgz "https://github.com/$GITHUB_REPOSITORY/archive/$GITHUB_SHA.tar.gz"
+          curl -fL -o .github/tmp/actions.tgz "https://github.com/$GITHUB_REPOSITORY/archive/$GITHUB_SHA.tar.gz"
           tar --extract --verbose --file .github/tmp/actions.tgz --directory .github/tmp --strip-components 1
           rm .github/tmp/actions.tgz
       - uses: ./.github/tmp/checkout
@@ -201,7 +201,7 @@ jobs:
       - name: bootstrap
         run: |
           mkdir -p .github/tmp
-          wget -O .github/tmp/actions.tgz "https://github.com/$GITHUB_REPOSITORY/archive/$GITHUB_SHA.tar.gz"
+          curl -fL -o .github/tmp/actions.tgz "https://github.com/$GITHUB_REPOSITORY/archive/$GITHUB_SHA.tar.gz" # using curl instead of wget because Windows
           tar --extract --verbose --file .github/tmp/actions.tgz --directory .github/tmp --strip-components 1
           rm .github/tmp/actions.tgz
       - uses: ./.github/tmp/checkout/composite
