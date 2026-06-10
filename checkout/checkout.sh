@@ -13,11 +13,11 @@ host="${host%/}"
 : host "$host"
 
 uid="$(id -u)"
-if [ "$uid" = 0 ]; then
+if [ "$uid" = '0' ]; then
 	# must be a Docker action running in a container 🙃
 	# https://docs.github.com/en/actions/sharing-automations/creating-actions/dockerfile-support-for-github-actions#user
 	chown="$(stat --format '%u:%g' "$PWD")"
-	if command -v gosu > /dev/null; then
+	if command -v gosu > /dev/null && [ "${chown%:*}" != '0' ]; then
 		# if we have "gosu" installed, let's side-step the problem entirely by swapping to the user we *should* be running as
 		exec gosu "$chown" "$BASH_SOURCE" "$@"
 	fi
