@@ -38,11 +38,12 @@ jobs:
     steps:
       # ideally, this would just be "uses: ./checkout", but that's a chicken-and-egg that results in "Error: Can't find 'action.yml', 'action.yaml' or 'Dockerfile' under '/home/runner/work/actions/actions/checkout'. Did you forget to run actions/checkout before running your local action?"
       # the second-best would be "uses: tianon/actions/checkout@${{ github.sha }}" but that's *also* invalid because we don't get the "github" context here so we can't self-reference properly 🙃
-      - name: checkout-checkout
+      - name: bootstrap
         run: |
           mkdir -p .github/tmp
           wget -O .github/tmp/actions.tgz "https://github.com/$GITHUB_REPOSITORY/archive/$GITHUB_SHA.tar.gz"
           tar --extract --verbose --file .github/tmp/actions.tgz --directory .github/tmp --strip-components 1
+          rm .github/tmp/actions.tgz
       - uses: ./.github/tmp/checkout
         with:
           fetch-depth: 3
@@ -200,8 +201,8 @@ jobs:
       - name: bootstrap
         run: |
           mkdir -p .github/tmp
-          curl -fsSLo .github/tmp/actions.tgz "https://github.com/$GITHUB_REPOSITORY/archive/$GITHUB_SHA.tar.gz"
-          tar --extract --gzip --file .github/tmp/actions.tgz --directory .github/tmp --strip-components 1
+          wget -O .github/tmp/actions.tgz "https://github.com/$GITHUB_REPOSITORY/archive/$GITHUB_SHA.tar.gz"
+          tar --extract --verbose --file .github/tmp/actions.tgz --directory .github/tmp --strip-components 1
           rm .github/tmp/actions.tgz
       - uses: ./.github/tmp/checkout/composite
         with:
