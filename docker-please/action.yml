@@ -1,0 +1,27 @@
+# https://github.com/actions/runner-images/issues/13729
+
+name: 'Docker, Please'
+description: 'Ensure Docker is started on Windows runners (workaround for a race condition where the Docker Engine service is sometimes stopped when jobs begin)'
+
+runs:
+  using: composite
+  steps:
+    - shell: pwsh
+      run: |
+        $svc = Get-Service -Name 'docker' -ErrorAction SilentlyContinue
+        if ($null -eq $svc) {
+          Write-Host 'docker service not found -- skipping'
+          exit 0
+        }
+        if ($svc.Status -ne 'Running') {
+          Write-Host "docker service is '$($svc.Status)' -- starting..."
+          Start-Service -Name 'docker' -ErrorAction Stop
+        }
+        $deadline = (Get-Date).AddSeconds(60)
+        while ((Get-Date) -lt $deadline) {
+          $null = docker version 2>&1
+          if ($LASTEXITCODE -eq 0) { break }
+          Start-Sleep -Seconds 2
+        }
+        docker version
+      if: runner.os == 'Windows'
