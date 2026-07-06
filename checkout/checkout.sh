@@ -5,10 +5,10 @@ set -Eeuo pipefail -x
 #env | sort
 
 : repository "${INPUT_REPOSITORY:=$GITHUB_REPOSITORY}"
-: ref "${FETCH_REF:=${INPUT_REF:-$GITHUB_SHA}}"
+: ref "${FETCH_REF:=${INPUT_REF:-${GITHUB_SHA:-HEAD}}}"
 : fetch-depth "${depth:=${INPUT_FETCH_DEPTH:-1}}"
 
-host="${INPUT_GITHUB_SERVER_URL:-$GITHUB_SERVER_URL}"
+host="${INPUT_GITHUB_SERVER_URL:-${GITHUB_SERVER_URL:-https://github.com}}"
 host="${host%/}"
 : host "$host"
 
@@ -62,34 +62,36 @@ case "$INPUT_LFS" in
 	true | yes | 1) git lfs install --local ;;
 esac
 
-# write credentials to a file in RUNNER_TEMP; reference it via includeIf.gitdir: so the token never appears as a git config value or process argument
-# https://github.com/actions/checkout/blob/44c2b7a8a4ea60a981eaca3cf939b5f4305c123b/src/git-auth-helper.ts#L326-L409
-credsConfig="$(mktemp "${RUNNER_TEMP}/git-credentials-XXXXXXXXXX.config")"
-if [ -n "$chown" ]; then
-	# TODO delete this (and gosu bits above) when we're composite
-	chown "$chown" "$credsConfig"
+if [ -n "${INPUT_TOKEN:+x}" ]; then
+	# write credentials to a file in RUNNER_TEMP; reference it via includeIf.gitdir: so the token never appears as a git config value or process argument
+	# https://github.com/actions/checkout/blob/44c2b7a8a4ea60a981eaca3cf939b5f4305c123b/src/git-auth-helper.ts#L326-L409
+	credsConfig="$(mktemp "${RUNNER_TEMP:-${TMPDIR:-/tmp}}/git-credentials-XXXXXXXXXX.config")"
+	if [ -n "$chown" ]; then
+		# TODO delete this (and gosu bits above) when we're composite
+		chown "$chown" "$credsConfig"
+	fi
+	set +x
+	b64token="$(tr -d '\n' <<<"x-access-token:$INPUT_TOKEN" | base64 --wrap=0)"
+	printf '[http "%s/"]\n\textraheader = AUTHORIZATION: basic %s\n' "$host" "$b64token" > "$credsConfig"
+	unset b64token
+	set -x
+	gitDir="$(git rev-parse --absolute-git-dir)"
+	gitDir="$(readlink -f "$gitDir")" # -f instead of --canonicalize for macOS's sake (no GNU coreutils)
+	git config --local "includeIf.gitdir:${gitDir}.path" "$credsConfig"
+	git config --local "includeIf.gitdir:${gitDir}/worktrees/*.path" "$credsConfig"
+	# best-effort host-side entries so that regular (non-container) job steps also get credentials when persist-credentials: true
+	# we can't know the real host paths from inside the container, so we assume the standard GitHub-hosted runner layout:
+	#   RUNNER_TEMP  -> /home/runner/work/_temp
+	#   workspace    -> /home/runner/work/REPONAME/REPONAME
+	# fails silently (no credentials for host git commands) when the assumption is wrong -- eg, self-hosted runners or Forgejo
+	# correct fix: become a composite action running on the host, which knows the real paths natively (see CLAUDE.md)
+	# TODO https://github.com/actions/runner/issues/1478
+	repoName="${INPUT_REPOSITORY##*/}"
+	hostGitDir="/home/runner/work/${repoName}/${repoName}${INPUT_PATH:+/${INPUT_PATH#/}}/.git"
+	hostCredsConfig="/home/runner/work/_temp/${credsConfig##*/}"
+	git config --local "includeIf.gitdir:${hostGitDir}.path" "$hostCredsConfig"
+	git config --local "includeIf.gitdir:${hostGitDir}/worktrees/*.path" "$hostCredsConfig"
 fi
-set +x
-b64token="$(tr -d '\n' <<<"x-access-token:$INPUT_TOKEN" | base64 --wrap=0)"
-printf '[http "%s/"]\n\textraheader = AUTHORIZATION: basic %s\n' "$host" "$b64token" > "$credsConfig"
-unset b64token
-set -x
-gitDir="$(git rev-parse --absolute-git-dir)"
-gitDir="$(readlink -f "$gitDir")" # -f instead of --canonicalize for macOS's sake (no GNU coreutils)
-git config --local "includeIf.gitdir:${gitDir}.path" "$credsConfig"
-git config --local "includeIf.gitdir:${gitDir}/worktrees/*.path" "$credsConfig"
-# best-effort host-side entries so that regular (non-container) job steps also get credentials when persist-credentials: true
-# we can't know the real host paths from inside the container, so we assume the standard GitHub-hosted runner layout:
-#   RUNNER_TEMP  -> /home/runner/work/_temp
-#   workspace    -> /home/runner/work/REPONAME/REPONAME
-# fails silently (no credentials for host git commands) when the assumption is wrong -- eg, self-hosted runners or Forgejo
-# correct fix: become a composite action running on the host, which knows the real paths natively (see CLAUDE.md)
-# TODO https://github.com/actions/runner/issues/1478
-repoName="${INPUT_REPOSITORY##*/}"
-hostGitDir="/home/runner/work/${repoName}/${repoName}${INPUT_PATH:+/${INPUT_PATH#/}}/.git"
-hostCredsConfig="/home/runner/work/_temp/${credsConfig##*/}"
-git config --local "includeIf.gitdir:${hostGitDir}.path" "$hostCredsConfig"
-git config --local "includeIf.gitdir:${hostGitDir}/worktrees/*.path" "$hostCredsConfig"
 
 fetchArgs=(
 	--prune
@@ -188,7 +190,7 @@ case "$FETCH_REF" in
 		git checkout --progress --force "$FETCH_REF"
 		;;
 	*)
-		git checkout --progress --force "$FETCH_REF"
+		git checkout --progress --force FETCH_HEAD
 		;;
 esac
 
@@ -211,14 +213,16 @@ if [ -n "${GITHUB_OUTPUT:-}" ]; then
 	echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 fi
 
-: persist-credentials "${INPUT_PERSIST_CREDENTIALS=false}"
-case "$INPUT_PERSIST_CREDENTIALS" in
-	true | yes | 1) : ;;
-	*)
-		rm -f "$credsConfig" # macOS has no GNU coreutils
-		git config --local --unset "includeIf.gitdir:${gitDir}.path" || :
-		git config --local --unset "includeIf.gitdir:${gitDir}/worktrees/*.path" || :
-		git config --local --unset "includeIf.gitdir:${hostGitDir}.path" || :
-		git config --local --unset "includeIf.gitdir:${hostGitDir}/worktrees/*.path" || :
-		;;
-esac
+if [ -n "${INPUT_TOKEN:+x}" ]; then
+	: persist-credentials "${INPUT_PERSIST_CREDENTIALS=false}"
+	case "$INPUT_PERSIST_CREDENTIALS" in
+		true | yes | 1) : ;;
+		*)
+			rm -f "$credsConfig" # macOS has no GNU coreutils
+			git config --local --unset "includeIf.gitdir:${gitDir}.path" || :
+			git config --local --unset "includeIf.gitdir:${gitDir}/worktrees/*.path" || :
+			git config --local --unset "includeIf.gitdir:${hostGitDir}.path" || :
+			git config --local --unset "includeIf.gitdir:${hostGitDir}/worktrees/*.path" || :
+			;;
+	esac
+fi
