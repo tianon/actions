@@ -96,9 +96,18 @@ fi
 fetchArgs=(
 	--prune
 	--no-tags
-	--no-recurse-submodules # TODO optional submodules
 	origin
 )
+
+: submodules "${INPUT_SUBMODULES=false}"
+case "$INPUT_SUBMODULES" in
+	true | yes | 1 | recursive)
+		fetchArgs+=( --recurse-submodules )
+		;;
+	*)
+		fetchArgs+=( --no-recurse-submodules )
+		;;
+esac
 
 : show-progress "${INPUT_SHOW_PROGRESS=true}"
 case "$INPUT_SHOW_PROGRESS" in
@@ -190,7 +199,22 @@ case "$FETCH_REF" in
 		git checkout --progress --force "$FETCH_REF"
 		;;
 	*)
+		# unqualified ref or SHA -- use the object fetched into FETCH_HEAD
 		git checkout --progress --force FETCH_HEAD
+		;;
+esac
+
+# https://github.com/actions/checkout/blob/e8d4307400f9427dba7cb98e488d6ab85f1cec5f/src/git-command-manager.ts#L455-L467
+case "$INPUT_SUBMODULES" in
+	true | yes | 1 | recursive)
+		submoduleArgs=( --init --force )
+		if [ "$depth" != '0' ]; then
+			submoduleArgs+=( "--depth=$depth" )
+		fi
+		if [ "$INPUT_SUBMODULES" = 'recursive' ]; then
+			submoduleArgs+=( --recursive )
+		fi
+		git -c protocol.version=2 submodule update "${submoduleArgs[@]}"
 		;;
 esac
 

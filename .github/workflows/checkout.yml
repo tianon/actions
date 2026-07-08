@@ -283,3 +283,67 @@ jobs:
             echo >&2 'error: cleanup failed to remove credentials'
             exit 1
           fi
+
+      # test submodules: false (default)
+      - uses: ./checkout/composite
+        with:
+          repository: tianon/bashbrew-tianon-meta
+          path: test/checkout/composite/submodules-false
+      - run: |
+          status="$(git -C test/checkout/composite/submodules-false submodule status .scripts)"
+          # An uninitialized submodule starts with a '-'
+          if [[ "$status" != -* ]]; then
+            echo >&2 'error: submodule .scripts should not be initialized by default'
+            exit 1
+          fi
+
+      # test submodules: true (without depth, meaning default fetch-depth: 1)
+      - uses: ./checkout/composite
+        with:
+          repository: tianon/bashbrew-tianon-meta
+          path: test/checkout/composite/submodules-true
+          submodules: true
+      - run: |
+          status="$(git -C test/checkout/composite/submodules-true submodule status .scripts)"
+          if [[ "$status" == -* ]]; then
+            echo >&2 'error: submodule .scripts should be initialized'
+            exit 1
+          fi
+          shallow="$(git -C test/checkout/composite/submodules-true/.scripts rev-parse --is-shallow-repository)"
+          if [ "$shallow" != 'true' ]; then
+            echo >&2 'error: expected shallow clone of submodule by default'
+            exit 1
+          fi
+
+      # test submodules: true (with depth 0)
+      - uses: ./checkout/composite
+        with:
+          repository: tianon/bashbrew-tianon-meta
+          path: test/checkout/composite/submodules-true-depth
+          submodules: true
+          fetch-depth: 0
+      - run: |
+          status="$(git -C test/checkout/composite/submodules-true-depth submodule status .scripts)"
+          if [[ "$status" == -* ]]; then
+            echo >&2 'error: submodule .scripts should be initialized'
+            exit 1
+          fi
+          shallow="$(git -C test/checkout/composite/submodules-true-depth/.scripts rev-parse --is-shallow-repository)"
+          if [ "$shallow" != 'false' ]; then
+            echo >&2 'error: expected full clone of submodule with fetch-depth: 0'
+            exit 1
+          fi
+
+      # test submodules: recursive
+      - uses: ./checkout/composite
+        with:
+          repository: tianon/bashbrew-tianon-meta # TODO find a better recursive example repository for testing
+          path: test/checkout/composite/submodules-recursive
+          submodules: recursive
+      - run: |
+          status="$(git -C test/checkout/composite/submodules-recursive submodule status .scripts)"
+          if [[ "$status" == -* ]]; then
+            echo >&2 'error: submodule .scripts should be initialized'
+            exit 1
+          fi
+          # TODO further recursive testing
