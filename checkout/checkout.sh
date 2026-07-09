@@ -2,7 +2,7 @@
 set -Eeuo pipefail -x
 
 # TODO add "debug-env" input or something?
-#env | sort
+env | sort
 
 : repository "${INPUT_REPOSITORY:=$GITHUB_REPOSITORY}"
 : ref "${FETCH_REF:=${INPUT_REF:-${GITHUB_SHA:-HEAD}}}"
