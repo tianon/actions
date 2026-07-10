@@ -1,0 +1,59 @@
+name: validate
+
+on:
+  pull_request:
+    paths:
+      - '**/.upstream'
+      - '**/action.yml'
+      - '.github/workflows/validate.yml'
+  push:
+    paths:
+      - '**/.upstream'
+      - '**/action.yml'
+      - '.github/workflows/validate.yml'
+  workflow_dispatch:
+
+defaults:
+  run:
+    shell: 'bash -Eeuo pipefail -x {0}'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+
+      - uses: tianon/actions/checkout/composite@d4b58e90c2ef8457fbe64725d4505fb2602a3726 # TODO swap to HEAD once submodules support is in main
+        with:
+          submodules: true
+
+      - name: download jaq
+        run: |
+          # https://github.com/01mf02/jaq/releases
+          mkdir .bin
+          wget -O .bin/jaq 'https://github.com/01mf02/jaq/releases/download/v3.1.0/jaq-x86_64-unknown-linux-gnu' --progress=dot:giga
+          sha256sum <<<'093d741fdd262467f33a4c326acf989e05b03e36677ba190220ca6798326be86 *.bin/jaq' --strict --check -
+          chmod +x .bin/jaq
+          .bin/jaq --version
+          echo "$PWD/.bin" >> "$GITHUB_PATH"
+
+      - name: validate-upstream-deltas
+        run: |
+          for yml in */action.yml; do
+            dir="$(dirname "$yml")"
+            upstream="$dir/.upstream/action.yml"
+            if [ ! -s "$upstream" ]; then
+              echo >&2 "note: no upstream in '$dir' ('$upstream' specifically); skipping"
+              continue
+            fi
+            jaq --rawfile upstream "$upstream" --raw-input --slurp --from-file validate-upstream-delta.jq "$yml"
+            if [ -s "$dir/composite/action.yml" ]; then
+              jaq --rawfile upstream "$upstream" --raw-input --slurp --from-file validate-upstream-delta.jq "$dir/composite/action.yml"
+            fi
+          done

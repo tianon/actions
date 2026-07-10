@@ -27,8 +27,7 @@ inputs:
   # ssh-user: not yet implemented -- depends on ssh-key (also not implemented)
 
   persist-credentials:
-    # upstream default: true -- credentials after checkout are rarely needed and are a security anti-pattern; set to true explicitly only if post-checkout git operations require authentication
-    default: false
+    default: false # upstream default: true -- credentials after checkout are rarely needed and are a security anti-pattern; set to true explicitly only if post-checkout git operations require authentication
 
   path: {}
 
