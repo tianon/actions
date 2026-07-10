@@ -1,3 +1,6 @@
 [submodule "checkout/.upstream"]
 	path = checkout/.upstream
 	url = https://github.com/actions/checkout.git
+[submodule "setup-go/.upstream"]
+	path = setup-go/.upstream
+	url = https://github.com/actions/setup-go.git
