@@ -42,7 +42,7 @@ inputs:
   persist-credentials:
     # callers who set true should follow with checkout/cleanup -- either via if: always() for end-of-job cleanup, or proactively mid-job to scope credentials to only the steps that need them (checkout/cleanup is idempotent, so calling it before post: is safe and intentionally supported even in a world where composite gains post: support)
     # TODO consider dropping this input and hardcoding INPUT_PERSIST_CREDENTIALS=false in the env: block to make the composite always self-cleaning at the cost of no credential persistence on non-Linux runners
-    default: false
+    default: false # upstream default: true -- credentials after checkout are rarely needed and are a security anti-pattern; set to true explicitly only if post-checkout git operations require authentication
 
   path: {}
 
@@ -67,7 +67,8 @@ inputs:
     default: true
 
   # intentional divergence: LFS is supported in composite: https://github.com/tianon/actions/pull/8
-  lfs: {}
+  lfs:
+    default: false
 
   # TODO https://github.com/actions/checkout/blob/9f265659d3bb64ab1440b03b12f4d47a24320917/action.yml#L86-L94
   # submodules: not yet implemented -- requires recursive authentication and fetch configuration per submodule repo
