@@ -29,7 +29,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
 
-      - uses: tianon/actions/checkout/composite@d4b58e90c2ef8457fbe64725d4505fb2602a3726 # TODO swap to HEAD once submodules support is in main
+      - uses: tianon/actions/checkout/composite@2d718a3078da20091ee60f7247745e2e3c27d88b # TODO swap to HEAD once submodules support is in main
         with:
           submodules: true
 
