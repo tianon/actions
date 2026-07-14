@@ -334,11 +334,13 @@ else
 fi
 
 # https://github.com/actions/checkout/blob/e8d4307400f9427dba7cb98e488d6ab85f1cec5f/src/git-command-manager.ts#L223-L232 (checkout)
+checkoutArgs=( -c advice.detachedHead=false checkout --progress --force )
 if [ -n "$checkoutStartPoint" ]; then
-	git checkout --progress --force -B "$checkoutRef" "$checkoutStartPoint"
+	checkoutArgs+=( -B "$checkoutRef" "$checkoutStartPoint" )
 else
-	git checkout --progress --force "$checkoutRef"
+	checkoutArgs+=( "$checkoutRef" )
 fi
+git "${checkoutArgs[@]}"
 
 # https://github.com/actions/checkout/blob/9f265659d3bb64ab1440b03b12f4d47a24320917/src/git-source-provider.ts#L235-L258
 : submodules "${INPUT_SUBMODULES=false}"
