@@ -54,8 +54,9 @@ inputs:
   # TODO https://github.com/actions/checkout/blob/9f265659d3bb64ab1440b03b12f4d47a24320917/action.yml#L83-L85
   # lfs: not yet implemented -- requires git-lfs in the Docker container image; supported in checkout/composite where git-lfs is available on GitHub-hosted runners
 
-  # TODO https://github.com/actions/checkout/blob/9f265659d3bb64ab1440b03b12f4d47a24320917/action.yml#L86-L94
-  # submodules: not yet implemented -- requires recursive authentication and fetch configuration per submodule repo
+  submodules:
+    description: 'whether to checkout submodules: `true` or `recursive`'
+    default: false
 
   set-safe-directory:
     default: true

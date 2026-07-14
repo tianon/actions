@@ -70,8 +70,9 @@ inputs:
   lfs:
     default: false
 
-  # TODO https://github.com/actions/checkout/blob/9f265659d3bb64ab1440b03b12f4d47a24320917/action.yml#L86-L94
-  # submodules: not yet implemented -- requires recursive authentication and fetch configuration per submodule repo
+  submodules:
+    description: 'whether to checkout submodules: `true` or `recursive`'
+    default: false
 
   set-safe-directory:
     default: true
@@ -109,5 +110,6 @@ runs:
         INPUT_SHOW_PROGRESS: ${{ inputs.show-progress }}
         INPUT_SPARSE_CHECKOUT: ${{ inputs.sparse-checkout }}
         INPUT_SPARSE_CHECKOUT_CONE_MODE: ${{ inputs.sparse-checkout-cone-mode }}
+        INPUT_SUBMODULES: '${{ inputs.submodules }}'
         INPUT_TOKEN: ${{ inputs.token }}
       run: '"$GITHUB_ACTION_PATH/../checkout.sh"'
