@@ -340,8 +340,36 @@ else
 	git checkout --progress --force "$checkoutRef"
 fi
 
-# TODO submodules
 # https://github.com/actions/checkout/blob/9f265659d3bb64ab1440b03b12f4d47a24320917/src/git-source-provider.ts#L235-L258
+: submodules "${INPUT_SUBMODULES=false}"
+if _truthy "$INPUT_SUBMODULES" || [ "$INPUT_SUBMODULES" = 'recursive' ]; then
+	# TODO configureGlobalAuth
+
+	submoduleRecursive=()
+	if [ "$INPUT_SUBMODULES" = 'recursive' ]; then
+		submoduleRecursive+=( --recursive )
+	fi
+
+	# https://github.com/actions/checkout/blob/9f265659d3bb64ab1440b03b12f4d47a24320917/src/git-command-manager.ts#L403-L410 (submoduleSync)
+	git submodule sync "${submoduleRecursive[@]}"
+
+	# https://github.com/actions/checkout/blob/9f265659d3bb64ab1440b03b12f4d47a24320917/src/git-command-manager.ts#L412-L424 (submoduleUpdate)
+	submoduleArgs=(
+		-c protocol.version=2
+		submodule update
+		--init
+		--force
+		"${submoduleRecursive[@]}"
+	)
+	if [ "$INPUT_FETCH_DEPTH" -gt 0 ]; then
+		submoduleArgs+=( "--depth=$INPUT_FETCH_DEPTH" )
+	fi
+	git "${submoduleArgs[@]}"
+
+	git submodule foreach "${submoduleRecursive[@]}" 'git config --local gc.auto 0'
+
+	# TODO credentials persistence too 😬
+fi
 
 git log -1
 
