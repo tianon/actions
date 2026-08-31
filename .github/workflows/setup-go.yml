@@ -38,11 +38,11 @@ jobs:
       fail-fast: false
     runs-on: ${{ matrix.runner }}
     steps:
-      - uses: tianon/actions/checkout/composite@HEAD
+      - uses: $/checkout/composite # we need a local checkout for our testdata fixtures
 
       # test stable
       - id: stable
-        uses: ./setup-go
+        uses: $/setup-go
         with:
           go-version: stable
       - run: go version
@@ -54,14 +54,14 @@ jobs:
       - run: test "$GOTOOLCHAIN" = local
 
       # test oldstable
-      - uses: ./setup-go
+      - uses: $/setup-go
         with:
           go-version: oldstable
       - run: go version
 
       # test exact version + output value
       - id: exact
-        uses: ./setup-go
+        uses: $/setup-go
         with:
           go-version: 1.21.0
       - env:
@@ -71,14 +71,14 @@ jobs:
           test "$GO_VERSION" = '1.21.0'
 
       # test cache hit (same exact version -- should skip API call and download)
-      - uses: ./setup-go
+      - uses: $/setup-go
         with:
           go-version: 1.21.0
       - run: go version | grep -qF 'go1.21.0'
 
       # test architecture override -- 386 on Linux (32-bit x86 runs natively on x86_64 Linux)
       - if: runner.os == 'Linux'
-        uses: ./setup-go
+        uses: $/setup-go
         with:
           go-version: stable
           architecture: '386'
@@ -86,14 +86,14 @@ jobs:
         run: go env GOARCH | grep -qxF '386'
 
       # test partial version (latest patch for a given minor)
-      - uses: ./setup-go
+      - uses: $/setup-go
         with:
           go-version: '1.21'
       - run: go version | grep -qE 'go1\.21\.'
 
       # test go-version-file: go.mod
       - id: gomod
-        uses: ./setup-go
+        uses: $/setup-go
         with:
           go-version-file: ./setup-go/testdata/go.mod
       - env:
@@ -104,7 +104,7 @@ jobs:
 
       # test go-version-file: go.work
       - id: gowork
-        uses: ./setup-go
+        uses: $/setup-go
         with:
           go-version-file: ./setup-go/testdata/go.work
       - env:
@@ -115,7 +115,7 @@ jobs:
 
       # test go-version-file: .tool-versions
       - id: toolversions
-        uses: ./setup-go
+        uses: $/setup-go
         with:
           go-version-file: ./setup-go/testdata/.tool-versions
       - env:
@@ -126,7 +126,7 @@ jobs:
 
       # test go-version-file: .go-version
       - id: goversion
-        uses: ./setup-go
+        uses: $/setup-go
         with:
           go-version-file: ./setup-go/testdata/.go-version
       - env:

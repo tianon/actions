@@ -29,7 +29,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
 
-      - uses: tianon/actions/checkout/composite@HEAD
+      - uses: $/checkout/composite
         with:
           submodules: true
 
