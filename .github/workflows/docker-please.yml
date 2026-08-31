@@ -36,6 +36,5 @@ jobs:
       fail-fast: false
     runs-on: ${{ matrix.runner }}
     steps:
-      - uses: tianon/actions/checkout/composite@HEAD
-      - uses: ./docker-please
+      - uses: $/docker-please
       - run: docker version
