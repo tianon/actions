@@ -5,9 +5,13 @@ set -Eeuo pipefail -x
 #env | sort
 
 uid="$(id -u)"
-if [ "$uid" = 0 ] && command -v gosu > /dev/null; then
+if [ "$uid" = '0' ]; then
+	# must be a Docker action running in a container 🙃
+	# https://docs.github.com/en/actions/sharing-automations/creating-actions/dockerfile-support-for-github-actions#user
 	owner="$(stat --format '%u:%g' "$PWD")"
-	exec gosu "$owner" "$BASH_SOURCE" "$@"
+	if command -v gosu > /dev/null && [ "${owner%:*}" != '0' ]; then
+		exec gosu "$owner" "$BASH_SOURCE" "$@"
+	fi
 	# TODO delete this whole block when we're composite
 fi
 
